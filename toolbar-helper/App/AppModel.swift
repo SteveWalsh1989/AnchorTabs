@@ -91,18 +91,7 @@ final class AppModel: ObservableObject {
     lines.append("AX Trusted: \(windowDiagnostics.isTrusted ? "Yes" : "No")")
     lines.append("Open Windows: \(windowDiagnostics.windowCount)")
     lines.append("Pinned Items: \(pinnedDiagnostics.totalPins)")
-    lines.append("Matched Pins: \(pinnedDiagnostics.matchedPins)")
     lines.append("Missing Pins: \(pinnedDiagnostics.missingPins)")
-    lines.append("AX Observers Registered: \(windowDiagnostics.observerRegistrationCount)")
-
-    if let interval = windowDiagnostics.activePollingInterval {
-      lines.append(String(format: "Polling Interval: %.2fs", interval))
-    } else {
-      lines.append("Polling Interval: N/A")
-    }
-
-    lines.append("Refresh Count: \(windowDiagnostics.refreshCount)")
-    lines.append("Observer Event Count: \(windowDiagnostics.observerEventCount)")
 
     if let reason = windowDiagnostics.lastRefreshReason?.rawValue {
       lines.append("Last Refresh Reason: \(reason)")
@@ -119,30 +108,6 @@ final class AppModel: ObservableObject {
       lines.append("Last Refresh At: \(refreshedText)")
     } else {
       lines.append("Last Refresh At: N/A")
-    }
-
-    if let durationMs = windowDiagnostics.lastRefreshDurationMs {
-      lines.append(String(format: "Last Refresh Duration: %.1f ms", durationMs))
-    }
-
-    if let reconciledAt = pinnedDiagnostics.lastReconcileAt {
-      let reconciledText = DateFormatter.localizedString(
-        from: reconciledAt,
-        dateStyle: .short,
-        timeStyle: .medium
-      )
-      lines.append("Last Reconcile At: \(reconciledText)")
-    } else {
-      lines.append("Last Reconcile At: N/A")
-    }
-
-    if let reconcileDurationMs = pinnedDiagnostics.lastReconcileDurationMs {
-      lines.append(String(format: "Last Reconcile Duration: %.1f ms", reconcileDurationMs))
-    }
-
-    for method in PinMatchMethod.allCases {
-      let count = pinnedDiagnostics.matchCountsByMethod[method, default: 0]
-      lines.append("\(method.rawValue) Matches: \(count)")
     }
 
     return lines.joined(separator: "\n")

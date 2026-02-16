@@ -1,10 +1,10 @@
 import SwiftUI
 
-// Main menu bar strip UI with pinned tabs and the "+" management menu.
+// Main menu bar strip UI with pinned tabs and one consolidated management menu.
 struct MenuBarStripView: View {
   @ObservedObject var model: AppModel
 
-  // Renders pinned tabs plus one consolidated management menu.
+  // Renders pinned tabs plus one consolidated settings/menu button.
   var body: some View {
     HStack(spacing: 6) {
       if model.isAccessibilityTrusted {
@@ -14,6 +14,7 @@ struct MenuBarStripView: View {
             .foregroundStyle(.secondary)
         } else {
           ForEach(model.visiblePinnedItems) { pinnedItem in
+            let targetIndex = model.pinnedItems.firstIndex(where: { $0.id == pinnedItem.id })
             Button {
               model.activatePinnedItem(pinnedItem)
             } label: {
@@ -23,9 +24,20 @@ struct MenuBarStripView: View {
             }
             .buttonStyle(TabButtonStyle(pinnedItem.isMissing ? .missing : .active))
             .help(tooltip(for: pinnedItem))
+            .draggable(pinnedItem.id.uuidString)
+            .dropDestination(for: String.self) { items, _ in
+              guard
+                let draggedID = draggedPinID(from: items),
+                draggedID != pinnedItem.id,
+                let targetIndex
+              else { return false }
+              return reorderPinnedItem(draggedID: draggedID, beforeIndex: targetIndex)
+            }
             .contextMenu {
-              Button("Rename…") {
+              Button {
                 model.promptRename(for: pinnedItem)
+              } label: {
+                Label("Rename…", systemImage: "pencil")
               }
               if pinnedItem.reference.customName?.isEmpty == false {
                 Button("Reset Name") {
@@ -37,6 +49,15 @@ struct MenuBarStripView: View {
               }
             }
           }
+
+          Color.clear
+            .frame(width: 8, height: 18)
+            .contentShape(Rectangle())
+            .dropDestination(for: String.self) { items, _ in
+              guard let draggedID = draggedPinID(from: items) else { return false }
+              return reorderPinnedItem(draggedID: draggedID, beforeIndex: nil)
+            }
+            .help("Drop to move tab to the end")
         }
 
         if !model.overflowPinnedItems.isEmpty {
@@ -48,8 +69,10 @@ struct MenuBarStripView: View {
                 }
                 .disabled(pinnedItem.isMissing)
 
-                Button("Rename…") {
+                Button {
                   model.promptRename(for: pinnedItem)
+                } label: {
+                  Label("Rename…", systemImage: "pencil")
                 }
 
                 if pinnedItem.reference.customName?.isEmpty == false {
@@ -70,9 +93,16 @@ struct MenuBarStripView: View {
           .help("Overflow pinned windows")
         }
       } else {
-        Image(systemName: "exclamationmark.triangle.fill")
-          .foregroundStyle(.orange)
-          .help("Accessibility access is required to enumerate and focus windows")
+        Button {
+          model.openAccessibilitySettings()
+        } label: {
+          Image(systemName: "exclamationmark.triangle.fill")
+            .foregroundStyle(.orange)
+        }
+        .buttonStyle(.plain)
+        .help(
+          "Accessibility access is required to enumerate and focus windows. Click to open Accessibility Settings."
+        )
       }
 
       Menu {
@@ -87,14 +117,17 @@ struct MenuBarStripView: View {
         }
 
         Divider()
-        Menu("Settings") {
+        Menu {
           settingsMenuSection
+        } label: {
+          Label("Settings", systemImage: "gearshape")
         }
       } label: {
-        Image(systemName: "plus.circle.fill")
+        Image(systemName: "gearshape.fill")
       }
       .menuStyle(.borderlessButton)
-      .help("Pin / unpin open windows")
+      .menuIndicator(.hidden)
+      .help("Open toolbar menu")
     }
     .padding(.horizontal, 6)
     .padding(.vertical, 2)
@@ -143,8 +176,10 @@ struct MenuBarStripView: View {
           }
 
           if let pinnedItem {
-            Button("Rename Toolbar Label…") {
+            Button {
               model.promptRename(for: pinnedItem)
+            } label: {
+              Label("Rename Toolbar Label…", systemImage: "pencil")
             }
 
             if pinnedItem.reference.customName?.isEmpty == false {
@@ -153,11 +188,13 @@ struct MenuBarStripView: View {
               }
             }
           } else {
-            Button("Pin and Rename Toolbar Label…") {
+            Button {
               model.togglePin(for: window)
               if let newPinnedItem = model.pinnedItem(for: window) {
                 model.promptRename(for: newPinnedItem)
               }
+            } label: {
+              Label("Pin and Rename Toolbar Label…", systemImage: "pencil")
             }
           }
         } label: {
@@ -170,14 +207,16 @@ struct MenuBarStripView: View {
   // Bulk rename shortcuts for existing pinned items.
   @ViewBuilder
   private var pinnedManagementSection: some View {
-    Menu("Rename Pinned Items") {
+    Menu {
       ForEach(model.pinnedItems) { pinnedItem in
         Button {
           model.promptRename(for: pinnedItem)
         } label: {
-          Text(pinnedItem.tabLabel)
+          Label(pinnedItem.tabLabel, systemImage: "pencil")
         }
       }
+    } label: {
+      Label("Rename Pinned Items", systemImage: "pencil")
     }
   }
 
@@ -188,7 +227,7 @@ struct MenuBarStripView: View {
       model.resetAccessibilitySession()
     }
 
-    Button("Refresh Windows") {
+    Button("Refresh Open Windows") {
       model.refreshWindowsNow()
     }
 
@@ -211,36 +250,11 @@ struct MenuBarStripView: View {
   private var diagnosticsMenuSection: some View {
     Menu("Diagnostics") {
       Text("AX Trusted: \(model.windowDiagnostics.isTrusted ? "Yes" : "No")")
-      Text("Observer Registrations: \(model.windowDiagnostics.observerRegistrationCount)")
-      Text("Polling Interval: \(pollingIntervalText)")
-      Text("Refresh Count: \(model.windowDiagnostics.refreshCount)")
-      Text("Observer Events: \(model.windowDiagnostics.observerEventCount)")
+      Text("Open Windows: \(model.windowDiagnostics.windowCount)")
+      Text("Pinned Items: \(model.pinnedDiagnostics.totalPins)")
+      Text("Missing Pins: \(model.pinnedDiagnostics.missingPins)")
       Text("Last Refresh: \(diagnosticsDateText(model.windowDiagnostics.lastRefreshAt))")
       Text("Last Refresh Reason: \(model.windowDiagnostics.lastRefreshReason?.rawValue ?? "N/A")")
-      if let duration = model.windowDiagnostics.lastRefreshDurationMs {
-        Text(String(format: "Refresh Duration: %.1f ms", duration))
-      } else {
-        Text("Refresh Duration: N/A")
-      }
-
-      Divider()
-      Text("Pins: \(model.pinnedDiagnostics.totalPins)")
-      Text("Matched: \(model.pinnedDiagnostics.matchedPins)")
-      Text("Missing: \(model.pinnedDiagnostics.missingPins)")
-      Text("Last Reconcile: \(diagnosticsDateText(model.pinnedDiagnostics.lastReconcileAt))")
-      if let duration = model.pinnedDiagnostics.lastReconcileDurationMs {
-        Text(String(format: "Reconcile Duration: %.1f ms", duration))
-      } else {
-        Text("Reconcile Duration: N/A")
-      }
-
-      if !model.pinnedDiagnostics.matchCountsByMethod.isEmpty {
-        Divider()
-        ForEach(PinMatchMethod.allCases, id: \.rawValue) { method in
-          let count = model.pinnedDiagnostics.matchCountsByMethod[method, default: 0]
-          Text("\(method.rawValue): \(count)")
-        }
-      }
 
       Divider()
       Button("Copy Diagnostics") {
@@ -276,16 +290,38 @@ struct MenuBarStripView: View {
     return "Focus \(item.displayTitle) in \(item.displayAppName)"
   }
 
-  // Formats the currently active polling interval for diagnostics display.
-  private var pollingIntervalText: String {
-    guard let interval = model.windowDiagnostics.activePollingInterval else { return "N/A" }
-    return String(format: "%.2fs", interval)
-  }
-
   // Formats optional diagnostics timestamps.
   private func diagnosticsDateText(_ date: Date?) -> String {
     guard let date else { return "N/A" }
     return DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .medium)
+  }
+
+  // Parses an internal drag payload into a pinned item UUID.
+  private func draggedPinID(from items: [String]) -> UUID? {
+    guard let rawID = items.first else { return nil }
+    return UUID(uuidString: rawID)
+  }
+
+  // Reorders a dragged pin and returns true when a move was applied.
+  private func reorderPinnedItem(draggedID: UUID, beforeIndex: Int?) -> Bool {
+    guard let currentIndex = model.pinnedItems.firstIndex(where: { $0.id == draggedID }) else {
+      return false
+    }
+
+    if let beforeIndex {
+      let clampedIndex = max(0, min(beforeIndex, model.pinnedItems.count))
+      if currentIndex == clampedIndex || currentIndex + 1 == clampedIndex {
+        return false
+      }
+      model.movePinnedItem(id: draggedID, beforeIndex: clampedIndex)
+      return true
+    }
+
+    if currentIndex == model.pinnedItems.count - 1 {
+      return false
+    }
+    model.movePinnedItem(id: draggedID, beforeIndex: nil)
+    return true
   }
 }
 
