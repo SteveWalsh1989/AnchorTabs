@@ -137,6 +137,13 @@ final class AppModel: ObservableObject {
     windowStore.startPolling()
   }
 
+  // Resets layout/highlight preferences to product defaults.
+  func resetMenuLayoutSettingsToDefaults() {
+    menuTrailingSpacing = 0
+    menuPinnedItemMinWidth = 0
+    highlightMissingPins = true
+  }
+
   // Builds a copyable diagnostics report for bug triage.
   func diagnosticsReport() -> String {
     var lines: [String] = []

@@ -188,20 +188,31 @@ struct WindowManagerPopoverView: View {
         title: "Spacing",
         description: "Adds gap between pinned items and the settings icon to move pinned items left.",
         value: $model.menuTrailingSpacing,
-        range: AppModel.menuTrailingSpacingRange,
-        resetHelp: "Reset spacing to 0"
+        range: AppModel.menuTrailingSpacingRange
       )
 
       numberInputSettingRow(
         title: "Pinned Item Min Width",
         description: "Sets the minimum width for each pinned tab in the menu bar strip.",
         value: $model.menuPinnedItemMinWidth,
-        range: AppModel.menuPinnedItemMinWidthRange,
-        resetHelp: "Reset pinned item min width to 0"
+        range: AppModel.menuPinnedItemMinWidthRange
       )
 
-      Toggle("Show red underline for missing pinned windows", isOn: $model.highlightMissingPins)
-        .font(.system(size: 12))
+      HStack(spacing: 8) {
+        Text("Highlight missing pinned windows")
+          .font(.system(size: 12))
+        Spacer()
+        Toggle("", isOn: $model.highlightMissingPins)
+          .labelsHidden()
+      }
+
+      HStack {
+        Spacer()
+        Button("Reset All Settings") {
+          model.resetMenuLayoutSettingsToDefaults()
+        }
+        .font(.system(size: 12, weight: .semibold))
+      }
     }
     .padding(10)
     .background(
@@ -214,8 +225,7 @@ struct WindowManagerPopoverView: View {
     title: String,
     description: String,
     value: Binding<Double>,
-    range: ClosedRange<Double>,
-    resetHelp: String
+    range: ClosedRange<Double>
   ) -> some View {
     VStack(alignment: .leading, spacing: 6) {
       Text(title)
@@ -236,13 +246,6 @@ struct WindowManagerPopoverView: View {
         Text("px (max \(Int(range.upperBound)))")
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
-
-        Button("Reset") {
-          value.wrappedValue = range.lowerBound
-        }
-        .font(.system(size: 11))
-        .disabled(abs(value.wrappedValue - range.lowerBound) < 0.001)
-        .help(resetHelp)
       }
     }
   }
