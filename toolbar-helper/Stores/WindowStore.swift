@@ -11,9 +11,11 @@ private let windowStoreAXObserverCallback: AXObserverCallback = { _, _, _, _ in
   NotificationCenter.default.post(name: windowStoreAXObserverEventNotification, object: nil)
 }
 
+// Enumerates AX windows, focuses windows, and tracks observer/polling diagnostics.
 @MainActor
 final class WindowStore: ObservableObject {
   @Published private(set) var windows: [WindowSnapshot] = []
+  @Published private(set) var diagnostics = WindowStoreDiagnostics.empty
 
   private struct AXObserverRegistration {
     let observer: AXObserver
@@ -40,18 +42,26 @@ final class WindowStore: ObservableObject {
   private var observerRegistrationsByPID: [pid_t: AXObserverRegistration] = [:]
   private var notificationCancellables: Set<AnyCancellable> = []
   private var didStartObservers = false
+  private var refreshCount = 0
+  private var observerEventCount = 0
+  private var lastRefreshAt: Date?
+  private var lastRefreshReason: WindowRefreshReason?
+  private var lastRefreshDurationMs: Double?
 
+  // Injects the permission manager used for AX trust checks.
   init(permissionManager: AccessibilityPermissionManager) {
     self.permissionManager = permissionManager
   }
 
+  // Starts observer subscriptions and polling with an immediate refresh.
   func startPolling() {
     stopPolling()
     startObserverNotifications()
-    refreshNow()
+    refreshNow(reason: .startup)
     updatePollingTimerIfNeeded()
   }
 
+  // Stops all timers and observer run-loop registrations.
   func stopPolling() {
     timer?.invalidate()
     timer = nil
@@ -60,15 +70,19 @@ final class WindowStore: ObservableObject {
     activePollingInterval = nil
     stopObserverNotifications()
     removeAllAXObservers()
+    publishDiagnostics()
   }
 
-  func refreshNow() {
+  // Refreshes open windows and updates diagnostics for the given trigger.
+  func refreshNow(reason: WindowRefreshReason = .manual) {
+    let refreshStartedAt = Date()
     permissionManager.refreshStatus()
     guard permissionManager.isTrusted else {
       windows = []
       handlesByRuntimeID = [:]
       removeAllAXObservers()
       updatePollingTimerIfNeeded()
+      recordRefresh(reason: reason, startedAt: refreshStartedAt)
       return
     }
 
@@ -83,8 +97,10 @@ final class WindowStore: ObservableObject {
     }
     handlesByRuntimeID = result.handlesByRuntimeID
     updatePollingTimerIfNeeded()
+    recordRefresh(reason: reason, startedAt: refreshStartedAt)
   }
 
+  // Activates and focuses a specific runtime window id.
   func activateWindow(runtimeID: String) -> Bool {
     guard permissionManager.isTrusted else { return false }
     guard let snapshot = windows.first(where: { $0.id == runtimeID }) else { return false }
@@ -109,6 +125,7 @@ final class WindowStore: ObservableObject {
     return true
   }
 
+  // Enumerates candidate windows for each eligible running application.
   private func enumerateWindows(in apps: [NSRunningApplication]) -> (
     windows: [WindowSnapshot], handlesByRuntimeID: [String: AXUIElement]
   ) {
@@ -135,6 +152,7 @@ final class WindowStore: ObservableObject {
     return (snapshots, handles)
   }
 
+  // Filters to regular, non-terminated apps other than Toolbar Helper.
   private func eligibleRunningApps() -> [NSRunningApplication] {
     NSWorkspace.shared.runningApplications.filter {
       $0.activationPolicy == .regular
@@ -144,6 +162,7 @@ final class WindowStore: ObservableObject {
     }
   }
 
+  // Subscribes to observer events and app lifecycle notifications.
   private func startObserverNotifications() {
     guard !didStartObservers else { return }
     didStartObservers = true
@@ -170,12 +189,13 @@ final class WindowStore: ObservableObject {
       .sink { [weak self] _ in
         guard let self else { return }
         Task { @MainActor in
-          self.refreshNow()
+          self.refreshNow(reason: .workspaceLifecycle)
         }
       }
       .store(in: &notificationCancellables)
   }
 
+  // Tears down Combine subscriptions for observer and lifecycle notifications.
   private func stopObserverNotifications() {
     didStartObservers = false
     for cancellable in notificationCancellables {
@@ -184,8 +204,10 @@ final class WindowStore: ObservableObject {
     notificationCancellables.removeAll()
   }
 
+  // Debounces observer bursts before triggering a refresh pass.
   private func scheduleObserverRefresh() {
     guard permissionManager.isTrusted else { return }
+    observerEventCount += 1
     observerRefreshTimer?.invalidate()
     observerRefreshTimer = Timer.scheduledTimer(
       withTimeInterval: observerRefreshDebounceInterval,
@@ -193,11 +215,13 @@ final class WindowStore: ObservableObject {
     ) { [weak self] _ in
       guard let self else { return }
       Task { @MainActor in
-        self.refreshNow()
+        self.refreshNow(reason: .observerEvent)
       }
     }
+    publishDiagnostics()
   }
 
+  // Chooses fallback vs observer-backed polling interval.
   private func desiredPollingInterval() -> TimeInterval {
     guard permissionManager.isTrusted else { return fallbackPollingInterval }
     if observerRegistrationsByPID.isEmpty {
@@ -206,6 +230,7 @@ final class WindowStore: ObservableObject {
     return observerCapablePollingInterval
   }
 
+  // Rebuilds the polling timer when the desired interval changes.
   private func updatePollingTimerIfNeeded() {
     let desiredInterval = desiredPollingInterval()
     if let activePollingInterval, abs(activePollingInterval - desiredInterval) < 0.001 {
@@ -218,12 +243,14 @@ final class WindowStore: ObservableObject {
       [weak self] _ in
       guard let self else { return }
       Task { @MainActor in
-        self.refreshNow()
+        self.refreshNow(reason: .polling)
       }
     }
     timer?.tolerance = min(0.5, desiredInterval * 0.25)
+    publishDiagnostics()
   }
 
+  // Adds/removes AX observers to match the currently running apps.
   private func syncAXObservers(for apps: [NSRunningApplication]) {
     let activePIDs = Set(apps.map(\.processIdentifier))
     let stalePIDs = observerRegistrationsByPID.keys.filter { !activePIDs.contains($0) }
@@ -236,6 +263,7 @@ final class WindowStore: ObservableObject {
     }
   }
 
+  // Registers AX notifications for one process id if supported.
   private func addAXObserver(for pid: pid_t) {
     var observer: AXObserver?
     let createError = AXObserverCreate(pid, windowStoreAXObserverCallback, &observer)
@@ -261,6 +289,7 @@ final class WindowStore: ObservableObject {
     )
   }
 
+  // Unregisters all AX notifications for one process id.
   private func removeAXObserver(for pid: pid_t) {
     guard let registration = observerRegistrationsByPID.removeValue(forKey: pid) else { return }
 
@@ -276,12 +305,14 @@ final class WindowStore: ObservableObject {
     CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
   }
 
+  // Removes all currently registered AX observers.
   private func removeAllAXObservers() {
     for pid in Array(observerRegistrationsByPID.keys) {
       removeAXObserver(for: pid)
     }
   }
 
+  // Converts an AX window element into a normalized snapshot model.
   private func buildSnapshot(app: NSRunningApplication, windowElement: AXUIElement)
     -> WindowSnapshot?
   {
@@ -318,6 +349,7 @@ final class WindowStore: ObservableObject {
       windowNumber: windowNumber,
       role: role,
       subrole: subrole,
+      frame: axWindowFrame(for: windowElement),
       isMinimized: axBoolAttribute(for: windowElement, attribute: kAXMinimizedAttribute as CFString)
         ?? false
     )
@@ -330,6 +362,7 @@ final class WindowStore: ObservableObject {
     ]
   }
 
+  // Builds runtime id from stable window number when available.
   private func buildRuntimeID(pid: pid_t, windowNumber: Int?, windowElement: AXUIElement) -> String
   {
     if let windowNumber {
@@ -340,6 +373,7 @@ final class WindowStore: ObservableObject {
     return "\(pid)-\(Int(bitPattern: pointer))"
   }
 
+  // Reads the app-level AX window list and safely downcasts values.
   private func axWindowList(for appElement: AXUIElement) -> [AXUIElement]? {
     guard
       let value = axAttributeValue(
@@ -367,10 +401,12 @@ final class WindowStore: ObservableObject {
     return nil
   }
 
+  // Reads a string AX attribute.
   private func axStringAttribute(for element: AXUIElement, attribute: CFString) -> String? {
     axAttributeValue(for: element, attribute: attribute) as? String
   }
 
+  // Reads an integer AX attribute.
   private func axIntAttribute(for element: AXUIElement, attribute: CFString) -> Int? {
     guard let value = axAttributeValue(for: element, attribute: attribute) else { return nil }
     if let number = value as? NSNumber {
@@ -379,6 +415,7 @@ final class WindowStore: ObservableObject {
     return nil
   }
 
+  // Reads a boolean AX attribute.
   private func axBoolAttribute(for element: AXUIElement, attribute: CFString) -> Bool? {
     guard let value = axAttributeValue(for: element, attribute: attribute) else { return nil }
     if let number = value as? NSNumber {
@@ -387,6 +424,48 @@ final class WindowStore: ObservableObject {
     return nil
   }
 
+  // Reads a CGPoint AXValue attribute.
+  private func axCGPointAttribute(for element: AXUIElement, attribute: CFString) -> CGPoint? {
+    guard let value = axAttributeValue(for: element, attribute: attribute) else { return nil }
+    let cfValue = value as CFTypeRef
+    guard CFGetTypeID(cfValue) == AXValueGetTypeID() else { return nil }
+    let axValue = unsafeDowncast(value, to: AXValue.self)
+    guard AXValueGetType(axValue) == .cgPoint else { return nil }
+    var point = CGPoint.zero
+    guard AXValueGetValue(axValue, .cgPoint, &point) else { return nil }
+    return point
+  }
+
+  // Reads a CGSize AXValue attribute.
+  private func axCGSizeAttribute(for element: AXUIElement, attribute: CFString) -> CGSize? {
+    guard let value = axAttributeValue(for: element, attribute: attribute) else { return nil }
+    let cfValue = value as CFTypeRef
+    guard CFGetTypeID(cfValue) == AXValueGetTypeID() else { return nil }
+    let axValue = unsafeDowncast(value, to: AXValue.self)
+    guard AXValueGetType(axValue) == .cgSize else { return nil }
+    var size = CGSize.zero
+    guard AXValueGetValue(axValue, .cgSize, &size) else { return nil }
+    return size
+  }
+
+  // Builds a coarse frame snapshot from AX position and size attributes.
+  private func axWindowFrame(for element: AXUIElement) -> WindowFrame? {
+    guard
+      let position = axCGPointAttribute(for: element, attribute: kAXPositionAttribute as CFString),
+      let size = axCGSizeAttribute(for: element, attribute: kAXSizeAttribute as CFString)
+    else {
+      return nil
+    }
+
+    return WindowFrame(
+      x: Int(position.x.rounded()),
+      y: Int(position.y.rounded()),
+      width: max(0, Int(size.width.rounded())),
+      height: max(0, Int(size.height.rounded()))
+    )
+  }
+
+  // Reads a raw AX attribute value.
   private func axAttributeValue(for element: AXUIElement, attribute: CFString) -> AnyObject? {
     var value: CFTypeRef?
     let error = AXUIElementCopyAttributeValue(element, attribute, &value)
@@ -396,9 +475,34 @@ final class WindowStore: ObservableObject {
     return value
   }
 
+  // Sets a boolean AX attribute value.
   private func setBooleanAttribute(for element: AXUIElement, attribute: CFString, value: Bool)
     -> AXError
   {
     AXUIElementSetAttributeValue(element, attribute, value ? kCFBooleanTrue : kCFBooleanFalse)
+  }
+
+  // Captures refresh timing metadata and republishes diagnostics.
+  private func recordRefresh(reason: WindowRefreshReason, startedAt: Date) {
+    refreshCount += 1
+    lastRefreshAt = Date()
+    lastRefreshReason = reason
+    lastRefreshDurationMs = Date().timeIntervalSince(startedAt) * 1000
+    publishDiagnostics()
+  }
+
+  // Publishes the latest runtime diagnostics snapshot.
+  private func publishDiagnostics() {
+    diagnostics = WindowStoreDiagnostics(
+      isTrusted: permissionManager.isTrusted,
+      observerRegistrationCount: observerRegistrationsByPID.count,
+      activePollingInterval: activePollingInterval,
+      refreshCount: refreshCount,
+      observerEventCount: observerEventCount,
+      lastRefreshAt: lastRefreshAt,
+      lastRefreshReason: lastRefreshReason,
+      lastRefreshDurationMs: lastRefreshDurationMs,
+      windowCount: windows.count
+    )
   }
 }

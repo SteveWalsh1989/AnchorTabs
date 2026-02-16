@@ -1,8 +1,10 @@
 import SwiftUI
 
+// Minimal Settings scene for permission guidance in a menu bar-only app.
 struct SettingsView: View {
   @ObservedObject var model: AppModel
 
+  // Shows current Accessibility state and quick settings shortcuts.
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       Text("Toolbar Helper")

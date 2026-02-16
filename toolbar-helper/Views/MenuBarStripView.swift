@@ -1,8 +1,10 @@
 import SwiftUI
 
+// Main menu bar strip UI with pinned tabs and the "+" management menu.
 struct MenuBarStripView: View {
   @ObservedObject var model: AppModel
 
+  // Renders pinned tabs plus one consolidated management menu.
   var body: some View {
     HStack(spacing: 6) {
       if model.isAccessibilityTrusted {
@@ -99,6 +101,7 @@ struct MenuBarStripView: View {
     .frame(minHeight: 24)
   }
 
+  // Accessibility recovery actions shown when trust is missing.
   @ViewBuilder
   private var accessibilityRequiredMenuSection: some View {
     Text("Accessibility Required")
@@ -120,6 +123,7 @@ struct MenuBarStripView: View {
     }
   }
 
+  // Lists open windows with per-window pin and rename actions.
   @ViewBuilder
   private var windowsMenuSection: some View {
     Text("Open Windows")
@@ -163,6 +167,7 @@ struct MenuBarStripView: View {
     }
   }
 
+  // Bulk rename shortcuts for existing pinned items.
   @ViewBuilder
   private var pinnedManagementSection: some View {
     Menu("Rename Pinned Items") {
@@ -176,6 +181,7 @@ struct MenuBarStripView: View {
     }
   }
 
+  // Maintenance actions available inside the Settings submenu.
   @ViewBuilder
   private var settingsMenuSection: some View {
     Button("Restart Window Polling") {
@@ -195,8 +201,55 @@ struct MenuBarStripView: View {
     Button("Accessibility Settings…") {
       model.openAccessibilitySettings()
     }
+
+    Divider()
+    diagnosticsMenuSection
   }
 
+  // Runtime diagnostics view and copy-to-clipboard action.
+  @ViewBuilder
+  private var diagnosticsMenuSection: some View {
+    Menu("Diagnostics") {
+      Text("AX Trusted: \(model.windowDiagnostics.isTrusted ? "Yes" : "No")")
+      Text("Observer Registrations: \(model.windowDiagnostics.observerRegistrationCount)")
+      Text("Polling Interval: \(pollingIntervalText)")
+      Text("Refresh Count: \(model.windowDiagnostics.refreshCount)")
+      Text("Observer Events: \(model.windowDiagnostics.observerEventCount)")
+      Text("Last Refresh: \(diagnosticsDateText(model.windowDiagnostics.lastRefreshAt))")
+      Text("Last Refresh Reason: \(model.windowDiagnostics.lastRefreshReason?.rawValue ?? "N/A")")
+      if let duration = model.windowDiagnostics.lastRefreshDurationMs {
+        Text(String(format: "Refresh Duration: %.1f ms", duration))
+      } else {
+        Text("Refresh Duration: N/A")
+      }
+
+      Divider()
+      Text("Pins: \(model.pinnedDiagnostics.totalPins)")
+      Text("Matched: \(model.pinnedDiagnostics.matchedPins)")
+      Text("Missing: \(model.pinnedDiagnostics.missingPins)")
+      Text("Last Reconcile: \(diagnosticsDateText(model.pinnedDiagnostics.lastReconcileAt))")
+      if let duration = model.pinnedDiagnostics.lastReconcileDurationMs {
+        Text(String(format: "Reconcile Duration: %.1f ms", duration))
+      } else {
+        Text("Reconcile Duration: N/A")
+      }
+
+      if !model.pinnedDiagnostics.matchCountsByMethod.isEmpty {
+        Divider()
+        ForEach(PinMatchMethod.allCases, id: \.rawValue) { method in
+          let count = model.pinnedDiagnostics.matchCountsByMethod[method, default: 0]
+          Text("\(method.rawValue): \(count)")
+        }
+      }
+
+      Divider()
+      Button("Copy Diagnostics") {
+        model.copyDiagnosticsToPasteboard()
+      }
+    }
+  }
+
+  // Builds icon + title rows for the Open Windows menu.
   @ViewBuilder
   private func openWindowMenuLabel(for window: WindowSnapshot, isPinned: Bool) -> some View {
     let title = "\(isPinned ? "✓ " : "")\(window.menuTitle)"
@@ -213,6 +266,7 @@ struct MenuBarStripView: View {
     }
   }
 
+  // Tooltip text for pinned tabs, including missing-state guidance.
   private func tooltip(for item: PinnedWindowItem) -> String {
     if item.isMissing {
       return
@@ -221,8 +275,21 @@ struct MenuBarStripView: View {
 
     return "Focus \(item.displayTitle) in \(item.displayAppName)"
   }
+
+  // Formats the currently active polling interval for diagnostics display.
+  private var pollingIntervalText: String {
+    guard let interval = model.windowDiagnostics.activePollingInterval else { return "N/A" }
+    return String(format: "%.2fs", interval)
+  }
+
+  // Formats optional diagnostics timestamps.
+  private func diagnosticsDateText(_ date: Date?) -> String {
+    guard let date else { return "N/A" }
+    return DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .medium)
+  }
 }
 
+// Shared tab visual styling for active and missing pinned items.
 private struct TabButtonStyle: ButtonStyle {
   enum Kind {
     case active
@@ -237,6 +304,7 @@ private struct TabButtonStyle: ButtonStyle {
     self.kind = kind
   }
 
+  // Applies compact tab styling to status bar buttons.
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .font(.system(size: 11, weight: .medium))
@@ -249,6 +317,7 @@ private struct TabButtonStyle: ButtonStyle {
       .foregroundStyle(foregroundColor)
   }
 
+  // Chooses background color by tab state.
   private var backgroundColor: Color {
     switch kind {
     case .active:
@@ -262,6 +331,7 @@ private struct TabButtonStyle: ButtonStyle {
     }
   }
 
+  // Chooses foreground color by tab state.
   private var foregroundColor: Color {
     switch kind {
     case .missing:
