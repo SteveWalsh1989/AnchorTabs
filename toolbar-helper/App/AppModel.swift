@@ -11,6 +11,7 @@ final class AppModel: ObservableObject {
   private static let menuTrailingSpacingKey = "MenuStripTrailingSpacing.v2"
   private static let menuPinnedItemMinWidthKey = "MenuStripPinnedItemMinWidth.v2"
   private static let highlightMissingPinsKey = "HighlightMissingPins.v1"
+  private static let highlightFocusedWindowKey = "HighlightFocusedWindow.v1"
 
   @Published private(set) var windows: [WindowSnapshot] = []
   @Published private(set) var pinnedItems: [PinnedWindowItem] = []
@@ -18,11 +19,18 @@ final class AppModel: ObservableObject {
   @Published private(set) var maxVisiblePinnedTabs = 10
   @Published private(set) var windowDiagnostics = WindowStoreDiagnostics.empty
   @Published private(set) var pinnedDiagnostics = PinnedStoreDiagnostics.empty
+  @Published private(set) var focusedWindowRuntimeID: String?
 
   // Controls whether missing pinned items are highlighted in red.
   @Published var highlightMissingPins = true {
     didSet {
       userDefaults.set(highlightMissingPins, forKey: Self.highlightMissingPinsKey)
+    }
+  }
+  // Controls whether the currently focused pinned window gets a highlight marker.
+  @Published var highlightFocusedWindow = true {
+    didSet {
+      userDefaults.set(highlightFocusedWindow, forKey: Self.highlightFocusedWindowKey)
     }
   }
   // Gap between pinned items and the gear icon, used to shift items left.
@@ -80,6 +88,11 @@ final class AppModel: ObservableObject {
       highlightMissingPins = true
     } else {
       highlightMissingPins = userDefaults.bool(forKey: Self.highlightMissingPinsKey)
+    }
+    if userDefaults.object(forKey: Self.highlightFocusedWindowKey) == nil {
+      highlightFocusedWindow = true
+    } else {
+      highlightFocusedWindow = userDefaults.bool(forKey: Self.highlightFocusedWindowKey)
     }
     windowStore = WindowStore(permissionManager: permissionManager)
     bindStores()
@@ -142,6 +155,7 @@ final class AppModel: ObservableObject {
     menuTrailingSpacing = 0
     menuPinnedItemMinWidth = 0
     highlightMissingPins = true
+    highlightFocusedWindow = true
   }
 
   // Builds a copyable diagnostics report for bug triage.
@@ -259,6 +273,13 @@ final class AppModel: ObservableObject {
     _ = windowStore.activateWindow(runtimeID: window.id)
   }
 
+  // Returns true when a pinned item currently matches the focused runtime window.
+  func isPinnedItemFocused(_ item: PinnedWindowItem) -> Bool {
+    guard highlightFocusedWindow else { return false }
+    guard let runtimeID = item.window?.id else { return false }
+    return runtimeID == focusedWindowRuntimeID
+  }
+
   // Resolves and caches app icons for menu rows.
   func appIcon(for bundleID: String) -> NSImage? {
     if let cached = iconCache.object(forKey: bundleID as NSString) {
@@ -305,6 +326,13 @@ final class AppModel: ObservableObject {
       }
       .store(in: &cancellables)
 
+    windowStore.$focusedRuntimeID
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] focusedRuntimeID in
+        self?.focusedWindowRuntimeID = focusedRuntimeID
+      }
+      .store(in: &cancellables)
+
     pinnedStore.$pinnedItems
       .receive(on: DispatchQueue.main)
       .sink { [weak self] pinnedItems in
@@ -326,4 +354,5 @@ final class AppModel: ObservableObject {
       }
       .store(in: &cancellables)
   }
+
 }

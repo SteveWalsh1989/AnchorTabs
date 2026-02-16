@@ -56,9 +56,7 @@ struct WindowManagerPopoverView: View {
         Spacer()
 
         Button {
-          withAnimation(.easeInOut(duration: 0.15)) {
-            isShowingLayoutSettings.toggle()
-          }
+          isShowingLayoutSettings.toggle()
         } label: {
           Image(systemName: isShowingLayoutSettings ? "gearshape.fill" : "gearshape")
         }
@@ -150,8 +148,44 @@ struct WindowManagerPopoverView: View {
   // Inline expandable settings shown under the lower divider.
   private var layoutSettingsSection: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text("Settings")
-        .font(.headline)
+      settingRow(
+        title: "Spacing",
+        description: "Gap before the gear icon."
+      ) {
+        numberInputControl(value: $model.menuTrailingSpacing, range: AppModel.menuTrailingSpacingRange)
+      }
+      settingRow(
+        title: "Pinned Item Min Width",
+        description: "Minimum tab width."
+      ) {
+        numberInputControl(
+          value: $model.menuPinnedItemMinWidth,
+          range: AppModel.menuPinnedItemMinWidthRange
+        )
+      }
+      settingRow(
+        title: "Highlight missing pinned windows",
+        description: "Red underline when missing."
+      ) {
+        checkboxControl(isOn: $model.highlightMissingPins)
+      }
+      settingRow(
+        title: "Highlight focused window",
+        description: "Purple underline for active tab."
+      ) {
+        checkboxControl(isOn: $model.highlightFocusedWindow)
+      }
+
+      HStack {
+        Spacer()
+        Button("Reset All Settings") {
+          model.resetMenuLayoutSettingsToDefaults()
+        }
+        .font(.system(size: 12, weight: .semibold))
+      }
+      .font(.system(size: 12))
+
+      Divider()
 
       HStack(spacing: 8) {
         Button("Refresh Open Windows") {
@@ -164,13 +198,6 @@ struct WindowManagerPopoverView: View {
       }
       .font(.system(size: 12))
 
-      if !model.isAccessibilityTrusted {
-        Button("Enable Accessibility Access") {
-          model.requestAccessibilityPermission()
-        }
-        .font(.system(size: 12))
-      }
-
       HStack(spacing: 8) {
         Button("Accessibility Settings…") {
           model.openAccessibilitySettings()
@@ -182,72 +209,58 @@ struct WindowManagerPopoverView: View {
       }
       .font(.system(size: 12))
 
-      Divider()
-
-      numberInputSettingRow(
-        title: "Spacing",
-        description: "Adds gap between pinned items and the settings icon to move pinned items left.",
-        value: $model.menuTrailingSpacing,
-        range: AppModel.menuTrailingSpacingRange
-      )
-
-      numberInputSettingRow(
-        title: "Pinned Item Min Width",
-        description: "Sets the minimum width for each pinned tab in the menu bar strip.",
-        value: $model.menuPinnedItemMinWidth,
-        range: AppModel.menuPinnedItemMinWidthRange
-      )
-
-      HStack(spacing: 8) {
-        Text("Highlight missing pinned windows")
-          .font(.system(size: 12))
-        Spacer()
-        Toggle("", isOn: $model.highlightMissingPins)
-          .labelsHidden()
-      }
-
-      HStack {
-        Spacer()
-        Button("Reset All Settings") {
-          model.resetMenuLayoutSettingsToDefaults()
+      if !model.isAccessibilityTrusted {
+        Button("Enable Accessibility Access") {
+          model.requestAccessibilityPermission()
         }
-        .font(.system(size: 12, weight: .semibold))
+        .font(.system(size: 12))
       }
     }
     .padding(10)
-    .background(
-      RoundedRectangle(cornerRadius: 8)
-        .fill(Color.secondary.opacity(0.08))
-    )
   }
 
-  private func numberInputSettingRow(
+  private func settingRow<Control: View>(
     title: String,
     description: String,
+    @ViewBuilder control: () -> Control
+  ) -> some View {
+    HStack(alignment: .top, spacing: 12) {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title)
+          .font(.system(size: 12, weight: .semibold))
+        Text(description)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      Spacer(minLength: 8)
+      control()
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  private func numberInputControl(
     value: Binding<Double>,
     range: ClosedRange<Double>
   ) -> some View {
-    VStack(alignment: .leading, spacing: 6) {
-      Text(title)
-        .font(.headline)
-      Text(description)
-        .font(.caption)
+    HStack(spacing: 8) {
+      TextField(
+        "0",
+        value: clampedRoundedBinding(value, range: range),
+        format: .number.precision(.fractionLength(0))
+      )
+      .textFieldStyle(.roundedBorder)
+      .frame(width: 86)
+
+      Text("px")
+        .font(.system(size: 12))
         .foregroundStyle(.secondary)
-
-      HStack(alignment: .center, spacing: 8) {
-        TextField(
-          "0",
-          value: clampedRoundedBinding(value, range: range),
-          format: .number.precision(.fractionLength(0))
-        )
-        .textFieldStyle(.roundedBorder)
-        .frame(width: 100)
-
-        Text("px (max \(Int(range.upperBound)))")
-          .font(.system(size: 12))
-          .foregroundStyle(.secondary)
-      }
     }
+  }
+
+  private func checkboxControl(isOn: Binding<Bool>) -> some View {
+    Toggle("", isOn: isOn)
+      .labelsHidden()
+      .toggleStyle(.checkbox)
   }
 
   private func clampedRoundedBinding(

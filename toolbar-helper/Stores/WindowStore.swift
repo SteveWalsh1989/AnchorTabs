@@ -15,6 +15,7 @@ private let windowStoreAXObserverCallback: AXObserverCallback = { _, _, _, _ in
 @MainActor
 final class WindowStore: ObservableObject {
   @Published private(set) var windows: [WindowSnapshot] = []
+  @Published private(set) var focusedRuntimeID: String?
   @Published private(set) var diagnostics = WindowStoreDiagnostics.empty
 
   private struct AXObserverRegistration {
@@ -68,6 +69,7 @@ final class WindowStore: ObservableObject {
     observerRefreshTimer?.invalidate()
     observerRefreshTimer = nil
     activePollingInterval = nil
+    focusedRuntimeID = nil
     stopObserverNotifications()
     removeAllAXObservers()
     publishDiagnostics()
@@ -79,6 +81,7 @@ final class WindowStore: ObservableObject {
     permissionManager.refreshStatus()
     guard permissionManager.isTrusted else {
       windows = []
+      focusedRuntimeID = nil
       handlesByRuntimeID = [:]
       removeAllAXObservers()
       updatePollingTimerIfNeeded()
@@ -89,13 +92,15 @@ final class WindowStore: ObservableObject {
     let runningApps = eligibleRunningApps()
     syncAXObservers(for: runningApps)
     let result = enumerateWindows(in: runningApps)
-    windows = result.windows.sorted {
+    let sortedWindows = result.windows.sorted {
       if $0.appName == $1.appName {
         return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
       }
       return $0.appName.localizedCaseInsensitiveCompare($1.appName) == .orderedAscending
     }
+    windows = sortedWindows
     handlesByRuntimeID = result.handlesByRuntimeID
+    focusedRuntimeID = resolveFocusedRuntimeID(in: sortedWindows)
     updatePollingTimerIfNeeded()
     recordRefresh(reason: reason, startedAt: refreshStartedAt)
   }
@@ -396,6 +401,78 @@ final class WindowStore: ObservableObject {
         }
         return unsafeDowncast(item as AnyObject, to: AXUIElement.self)
       }
+    }
+
+    return nil
+  }
+
+  // Resolves the currently focused runtime window id from the frontmost app.
+  private func resolveFocusedRuntimeID(in windows: [WindowSnapshot]) -> String? {
+    guard !windows.isEmpty else { return nil }
+
+    let toolbarHelperPID = ProcessInfo.processInfo.processIdentifier
+    guard let frontmostApp = NSWorkspace.shared.frontmostApplication else { return nil }
+
+    // Keep the last known focused runtime id while this menu-bar app is frontmost.
+    if frontmostApp.processIdentifier == toolbarHelperPID {
+      guard let focusedRuntimeID else { return nil }
+      return windows.contains(where: { $0.id == focusedRuntimeID }) ? focusedRuntimeID : nil
+    }
+
+    let pid = frontmostApp.processIdentifier
+    let appElement = AXUIElementCreateApplication(pid)
+    guard
+      let focusedWindowValue = axAttributeValue(
+        for: appElement,
+        attribute: kAXFocusedWindowAttribute as CFString
+      )
+    else {
+      return nil
+    }
+    let focusedWindowCFValue = focusedWindowValue as CFTypeRef
+    guard CFGetTypeID(focusedWindowCFValue) == AXUIElementGetTypeID() else {
+      return nil
+    }
+    let focusedWindowElement = unsafeDowncast(focusedWindowValue, to: AXUIElement.self)
+
+    let focusedWindowNumber = axIntAttribute(
+      for: focusedWindowElement,
+      attribute: "AXWindowNumber" as CFString
+    )
+    let focusedRuntimeID = buildRuntimeID(
+      pid: pid,
+      windowNumber: focusedWindowNumber,
+      windowElement: focusedWindowElement
+    )
+    if windows.contains(where: { $0.id == focusedRuntimeID }) {
+      return focusedRuntimeID
+    }
+
+    let candidateWindows = windows.filter { $0.pid == pid }
+    if let focusedWindowNumber,
+      let numberMatch = candidateWindows.first(where: { $0.windowNumber == focusedWindowNumber })
+    {
+      return numberMatch.id
+    }
+
+    let focusedWindowTitle =
+      axStringAttribute(for: focusedWindowElement, attribute: kAXTitleAttribute as CFString)?
+      .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let focusedWindowFrame = axWindowFrame(for: focusedWindowElement)
+
+    if let focusedWindowFrame,
+      let frameMatch = candidateWindows.first(where: {
+        $0.frame == focusedWindowFrame
+          && $0.title.trimmingCharacters(in: .whitespacesAndNewlines) == focusedWindowTitle
+      })
+    {
+      return frameMatch.id
+    }
+
+    if let titleMatch = candidateWindows.first(where: {
+      $0.title.trimmingCharacters(in: .whitespacesAndNewlines) == focusedWindowTitle
+    }) {
+      return titleMatch.id
     }
 
     return nil

@@ -42,7 +42,7 @@ struct SettingsView: View {
           )
           .textFieldStyle(.roundedBorder)
           .frame(width: 100)
-          Text("px (max 5000)")
+          Text("px")
             .font(.system(size: 12))
             .foregroundStyle(.secondary)
         }
@@ -64,7 +64,7 @@ struct SettingsView: View {
           )
           .textFieldStyle(.roundedBorder)
           .frame(width: 100)
-          Text("px (max 5000)")
+          Text("px")
             .font(.system(size: 12))
             .foregroundStyle(.secondary)
         }

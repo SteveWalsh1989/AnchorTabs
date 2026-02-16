@@ -18,47 +18,8 @@ struct MenuBarStripView: View {
             .font(.system(size: 11, weight: .medium))
             .foregroundStyle(.secondary)
         } else {
-          ForEach(model.visiblePinnedItems) { pinnedItem in
-            let targetIndex = model.pinnedItems.firstIndex(where: { $0.id == pinnedItem.id })
-            Button {
-              model.activatePinnedItem(pinnedItem)
-            } label: {
-              Text(pinnedItem.tabLabel)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-            }
-            .buttonStyle(
-              TabButtonStyle(
-                pinnedItem.isMissing ? .missing : .active,
-                minWidth: model.menuPinnedItemMinWidth,
-                showsMissingUnderline: model.highlightMissingPins
-              )
-            )
-            .help(tooltip(for: pinnedItem))
-            .draggable(pinnedItem.id.uuidString)
-            .dropDestination(for: String.self) { items, _ in
-              guard
-                let draggedID = draggedPinID(from: items),
-                draggedID != pinnedItem.id,
-                let targetIndex
-              else { return false }
-              return reorderPinnedItem(draggedID: draggedID, beforeIndex: targetIndex)
-            }
-            .contextMenu {
-              Button {
-                model.promptRename(for: pinnedItem)
-              } label: {
-                Label("Rename…", systemImage: "pencil")
-              }
-              if pinnedItem.reference.customName?.isEmpty == false {
-                Button("Reset Name") {
-                  model.renamePin(pinID: pinnedItem.id, customName: nil)
-                }
-              }
-              Button("Unpin") {
-                model.unpin(pinID: pinnedItem.id)
-              }
-            }
+          ForEach(model.visiblePinnedItems, id: \.id) { pinnedItem in
+            pinnedTabButton(for: pinnedItem)
           }
 
           Color.clear
@@ -73,7 +34,7 @@ struct MenuBarStripView: View {
 
         if !model.overflowPinnedItems.isEmpty {
           Menu {
-            ForEach(model.overflowPinnedItems) { pinnedItem in
+            ForEach(model.overflowPinnedItems, id: \.id) { pinnedItem in
               Menu(pinnedItem.tabLabel) {
                 Button("Focus Window") {
                   model.activatePinnedItem(pinnedItem)
@@ -144,6 +105,61 @@ struct MenuBarStripView: View {
   }
 
   // Tooltip text for pinned tabs, including missing-state guidance.
+  private func pinnedTabButton(for pinnedItem: PinnedWindowItem) -> AnyView {
+    let tabKind: TabButtonStyle.Kind
+    if pinnedItem.isMissing {
+      tabKind = .missing
+    } else if model.isPinnedItemFocused(pinnedItem) {
+      tabKind = .focused
+    } else {
+      tabKind = .active
+    }
+
+    return AnyView(
+      Button {
+        model.activatePinnedItem(pinnedItem)
+      } label: {
+        Text(pinnedItem.tabLabel)
+          .lineLimit(1)
+          .fixedSize(horizontal: true, vertical: false)
+      }
+      .buttonStyle(
+        TabButtonStyle(
+          tabKind,
+          minWidth: model.menuPinnedItemMinWidth,
+          showsMissingUnderline: model.highlightMissingPins,
+          showsFocusedUnderline: model.highlightFocusedWindow
+        )
+      )
+      .help(tooltip(for: pinnedItem))
+      .draggable(pinnedItem.id.uuidString)
+      .dropDestination(for: String.self) { items, _ in
+        guard
+          let draggedID = draggedPinID(from: items),
+          draggedID != pinnedItem.id,
+          let targetIndex = model.pinnedItems.firstIndex(where: { $0.id == pinnedItem.id })
+        else { return false }
+        return reorderPinnedItem(draggedID: draggedID, beforeIndex: targetIndex)
+      }
+      .contextMenu {
+        Button {
+          model.promptRename(for: pinnedItem)
+        } label: {
+          Label("Rename…", systemImage: "pencil")
+        }
+        if pinnedItem.reference.customName?.isEmpty == false {
+          Button("Reset Name") {
+            model.renamePin(pinID: pinnedItem.id, customName: nil)
+          }
+        }
+        Button("Unpin") {
+          model.unpin(pinID: pinnedItem.id)
+        }
+      }
+    )
+  }
+
+  // Tooltip text for pinned tabs, including missing-state guidance.
   private func tooltip(for item: PinnedWindowItem) -> String {
     if item.isMissing {
       return
@@ -186,6 +202,7 @@ struct MenuBarStripView: View {
 private struct TabButtonStyle: ButtonStyle {
   enum Kind {
     case active
+    case focused
     case missing
     case warning
     case neutral
@@ -194,11 +211,19 @@ private struct TabButtonStyle: ButtonStyle {
   let kind: Kind
   let minWidth: Double
   let showsMissingUnderline: Bool
+  let showsFocusedUnderline: Bool
+  private static let focusedUnderlineColor = Color(red: 0.69, green: 0.56, blue: 0.94)
 
-  init(_ kind: Kind, minWidth: Double = 0, showsMissingUnderline: Bool = true) {
+  init(
+    _ kind: Kind,
+    minWidth: Double = 0,
+    showsMissingUnderline: Bool = true,
+    showsFocusedUnderline: Bool = true
+  ) {
     self.kind = kind
     self.minWidth = minWidth
     self.showsMissingUnderline = showsMissingUnderline
+    self.showsFocusedUnderline = showsFocusedUnderline
   }
 
   // Applies compact tab styling to status bar buttons.
@@ -220,6 +245,12 @@ private struct TabButtonStyle: ButtonStyle {
             .frame(height: 1)
             .padding(.horizontal, 8)
             .padding(.bottom, 1)
+        } else if kind == .focused && showsFocusedUnderline {
+          Rectangle()
+            .fill(Self.focusedUnderlineColor.opacity(0.95))
+            .frame(height: 1)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 1)
         }
       }
   }
@@ -228,6 +259,8 @@ private struct TabButtonStyle: ButtonStyle {
   private var backgroundColor: Color {
     switch kind {
     case .active:
+      Color(nsColor: .controlBackgroundColor)
+    case .focused:
       Color(nsColor: .controlBackgroundColor)
     case .missing:
       Color(nsColor: .controlBackgroundColor)
@@ -241,6 +274,8 @@ private struct TabButtonStyle: ButtonStyle {
   // Chooses foreground color by tab state.
   private var foregroundColor: Color {
     switch kind {
+    case .focused:
+      Color.primary
     case .missing:
       Color.primary
     case .warning:
