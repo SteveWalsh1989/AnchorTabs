@@ -164,25 +164,21 @@ struct WindowManagerPopoverView: View {
         ],
         spacing: 8
       ) {
-        Button("Refresh Open Windows") {
+        settingsActionButton("Refresh Open Windows") {
           model.refreshWindowsNow()
         }
-        .frame(maxWidth: .infinity)
 
-        Button("Restart Window Polling") {
+        settingsActionButton("Restart Window Polling") {
           model.resetAccessibilitySession()
         }
-        .frame(maxWidth: .infinity)
 
-        Button("Accessibility Settings…") {
+        settingsActionButton("Accessibility Settings…") {
           model.openAccessibilitySettings()
         }
-        .frame(maxWidth: .infinity)
 
-        Button("Copy Diagnostics") {
+        settingsActionButton("Copy Diagnostics") {
           model.copyDiagnosticsToPasteboard()
         }
-        .frame(maxWidth: .infinity)
       }
       .font(.system(size: 12))
 
@@ -279,6 +275,16 @@ struct WindowManagerPopoverView: View {
     Toggle("", isOn: isOn)
       .labelsHidden()
       .toggleStyle(.checkbox)
+  }
+
+  private func settingsActionButton(_ title: String, action: @escaping () -> Void) -> some View {
+    Button(action: action) {
+      Text(title)
+        .lineLimit(1)
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+    .buttonStyle(.bordered)
+    .controlSize(.small)
   }
 
   private func clampedRoundedBinding(
