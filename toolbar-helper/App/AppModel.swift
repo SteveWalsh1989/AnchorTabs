@@ -194,6 +194,11 @@ final class AppModel: ObservableObject {
     _ = windowStore.activateWindow(runtimeID: runtimeID)
   }
 
+  // Focuses a live window selected from the open-windows list.
+  func activateWindow(_ window: WindowSnapshot) {
+    _ = windowStore.activateWindow(runtimeID: window.id)
+  }
+
   // Resolves and caches app icons for menu rows.
   func appIcon(for bundleID: String) -> NSImage? {
     if let cached = iconCache.object(forKey: bundleID as NSString) {

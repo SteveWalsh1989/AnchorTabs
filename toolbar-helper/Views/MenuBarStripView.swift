@@ -3,6 +3,7 @@ import SwiftUI
 // Main menu bar strip UI with pinned tabs and one consolidated management menu.
 struct MenuBarStripView: View {
   @ObservedObject var model: AppModel
+  @State private var isShowingWindowManager = false
 
   // Renders pinned tabs plus one consolidated settings/menu button.
   var body: some View {
@@ -105,179 +106,24 @@ struct MenuBarStripView: View {
         )
       }
 
-      Menu {
-        if model.isAccessibilityTrusted {
-          windowsMenuSection
-          if !model.pinnedItems.isEmpty {
-            Divider()
-            pinnedManagementSection
-          }
-        } else {
-          accessibilityRequiredMenuSection
-        }
-
-        Divider()
-        Menu {
-          settingsMenuSection
-        } label: {
-          Label("Settings", systemImage: "gearshape")
-        }
+      Button {
+        isShowingWindowManager.toggle()
       } label: {
         Image(systemName: "gearshape.fill")
       }
-      .menuStyle(.borderlessButton)
-      .menuIndicator(.hidden)
-      .help("Open toolbar menu")
+      .buttonStyle(.plain)
+      .help("Open window manager")
+      .popover(
+        isPresented: $isShowingWindowManager,
+        attachmentAnchor: .rect(.bounds),
+        arrowEdge: .top
+      ) {
+        WindowManagerPopoverView(model: model)
+      }
     }
     .padding(.horizontal, 6)
     .padding(.vertical, 2)
     .frame(minHeight: 24)
-  }
-
-  // Accessibility recovery actions shown when trust is missing.
-  @ViewBuilder
-  private var accessibilityRequiredMenuSection: some View {
-    Text("Accessibility Required")
-      .font(.headline)
-
-    Text("Enable Toolbar Helper in Privacy & Security > Accessibility.")
-      .foregroundStyle(.secondary)
-
-    Button("Enable Accessibility Access") {
-      model.requestAccessibilityPermission()
-    }
-
-    Button("Open Accessibility Settings…") {
-      model.openAccessibilitySettings()
-    }
-
-    Button("Re-check Accessibility Status") {
-      model.resetAccessibilitySession()
-    }
-  }
-
-  // Lists open windows with per-window pin and rename actions.
-  @ViewBuilder
-  private var windowsMenuSection: some View {
-    Text("Open Windows")
-      .font(.headline)
-
-    if model.windows.isEmpty {
-      Text("No eligible windows found")
-        .foregroundStyle(.secondary)
-    } else {
-      ForEach(model.windows) { window in
-        let pinnedItem = model.pinnedItem(for: window)
-        let isPinned = pinnedItem != nil
-
-        Menu {
-          Button(isPinned ? "Unpin Window" : "Pin Window") {
-            model.togglePin(for: window)
-          }
-
-          if let pinnedItem {
-            Button {
-              model.promptRename(for: pinnedItem)
-            } label: {
-              Label("Rename Toolbar Label…", systemImage: "pencil")
-            }
-
-            if pinnedItem.reference.customName?.isEmpty == false {
-              Button("Reset Custom Label") {
-                model.renamePin(pinID: pinnedItem.id, customName: nil)
-              }
-            }
-          } else {
-            Button {
-              model.togglePin(for: window)
-              if let newPinnedItem = model.pinnedItem(for: window) {
-                model.promptRename(for: newPinnedItem)
-              }
-            } label: {
-              Label("Pin and Rename Toolbar Label…", systemImage: "pencil")
-            }
-          }
-        } label: {
-          openWindowMenuLabel(for: window, isPinned: isPinned)
-        }
-      }
-    }
-  }
-
-  // Bulk rename shortcuts for existing pinned items.
-  @ViewBuilder
-  private var pinnedManagementSection: some View {
-    Menu {
-      ForEach(model.pinnedItems) { pinnedItem in
-        Button {
-          model.promptRename(for: pinnedItem)
-        } label: {
-          Label(pinnedItem.tabLabel, systemImage: "pencil")
-        }
-      }
-    } label: {
-      Label("Rename Pinned Items", systemImage: "pencil")
-    }
-  }
-
-  // Maintenance actions available inside the Settings submenu.
-  @ViewBuilder
-  private var settingsMenuSection: some View {
-    Button("Restart Window Polling") {
-      model.resetAccessibilitySession()
-    }
-
-    Button("Refresh Open Windows") {
-      model.refreshWindowsNow()
-    }
-
-    if !model.isAccessibilityTrusted {
-      Button("Enable Accessibility Access") {
-        model.requestAccessibilityPermission()
-      }
-    }
-
-    Button("Accessibility Settings…") {
-      model.openAccessibilitySettings()
-    }
-
-    Divider()
-    diagnosticsMenuSection
-  }
-
-  // Runtime diagnostics view and copy-to-clipboard action.
-  @ViewBuilder
-  private var diagnosticsMenuSection: some View {
-    Menu("Diagnostics") {
-      Text("AX Trusted: \(model.windowDiagnostics.isTrusted ? "Yes" : "No")")
-      Text("Open Windows: \(model.windowDiagnostics.windowCount)")
-      Text("Pinned Items: \(model.pinnedDiagnostics.totalPins)")
-      Text("Missing Pins: \(model.pinnedDiagnostics.missingPins)")
-      Text("Last Refresh: \(diagnosticsDateText(model.windowDiagnostics.lastRefreshAt))")
-      Text("Last Refresh Reason: \(model.windowDiagnostics.lastRefreshReason?.rawValue ?? "N/A")")
-
-      Divider()
-      Button("Copy Diagnostics") {
-        model.copyDiagnosticsToPasteboard()
-      }
-    }
-  }
-
-  // Builds icon + title rows for the Open Windows menu.
-  @ViewBuilder
-  private func openWindowMenuLabel(for window: WindowSnapshot, isPinned: Bool) -> some View {
-    let title = "\(isPinned ? "✓ " : "")\(window.menuTitle)"
-
-    if let icon = model.appIcon(for: window.bundleID) {
-      Label {
-        Text(title)
-          .lineLimit(1)
-      } icon: {
-        Image(nsImage: icon)
-      }
-    } else {
-      Text(title)
-    }
   }
 
   // Tooltip text for pinned tabs, including missing-state guidance.
@@ -288,12 +134,6 @@ struct MenuBarStripView: View {
     }
 
     return "Focus \(item.displayTitle) in \(item.displayAppName)"
-  }
-
-  // Formats optional diagnostics timestamps.
-  private func diagnosticsDateText(_ date: Date?) -> String {
-    guard let date else { return "N/A" }
-    return DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .medium)
   }
 
   // Parses an internal drag payload into a pinned item UUID.
