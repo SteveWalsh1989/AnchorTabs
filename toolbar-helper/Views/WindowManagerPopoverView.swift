@@ -7,70 +7,40 @@ struct WindowManagerPopoverView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text("Open Windows")
-        .font(.headline)
-        .lineLimit(1)
-        .truncationMode(.tail)
-
-      Text("Click a window name to focus it. Use the pin icon to keep it in your strip.")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-
-      if !model.isAccessibilityTrusted {
-        accessibilityWarning
-      }
-
-      if orderedWindows.isEmpty {
-        Text("No eligible windows found")
-          .font(.system(size: 12))
-          .foregroundStyle(.secondary)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.vertical, 12)
-      } else {
-        ScrollView {
-          LazyVStack(spacing: 4) {
-            ForEach(orderedWindows) { window in
-              let isPinned = model.isPinned(window: window)
-              let rowLabel = displayLabel(for: window)
-              WindowManagerWindowRow(
-                displayLabel: rowLabel,
-                nameTooltip: rowLabel,
-                renameInfoTooltip: renamedWindowTooltip(for: window),
-                isPinned: isPinned,
-                onFocus: { model.activateWindow(window) },
-                onTogglePin: { model.togglePin(for: window) },
-                onRename: {
-                  guard let pinnedItem = model.pinnedItem(for: window) else { return }
-                  model.promptRename(for: pinnedItem)
-                }
-              )
-            }
-          }
-        }
-        .frame(maxHeight: 300)
-      }
-
-      Divider()
-
-      HStack {
-        Spacer()
-
-        Button {
-          isShowingLayoutSettings.toggle()
-        } label: {
-          Image(systemName: isShowingLayoutSettings ? "gearshape.fill" : "gearshape")
-        }
-        .buttonStyle(.plain)
-        .help(isShowingLayoutSettings ? "Hide settings" : "Show settings")
-      }
-      .font(.system(size: 12))
-
       if isShowingLayoutSettings {
+        HStack {
+          Spacer()
+          settingsToggleButton
+        }
+        .font(.system(size: 12))
+
         layoutSettingsSection
+      } else {
+        HStack {
+          Text("Open Windows")
+            .font(.headline)
+            .lineLimit(1)
+            .truncationMode(.tail)
+          Spacer()
+          settingsToggleButton
+        }
+        .font(.system(size: 12))
+
+        openWindowsSection
       }
     }
     .padding(12)
     .frame(width: 400)
+  }
+
+  private var settingsToggleButton: some View {
+    Button {
+      isShowingLayoutSettings.toggle()
+    } label: {
+      Image(systemName: isShowingLayoutSettings ? "gearshape.fill" : "gearshape")
+    }
+    .buttonStyle(.plain)
+    .help(isShowingLayoutSettings ? "Hide settings" : "Show settings")
   }
 
   // Returns windows with currently pinned items first, preserving pin order.
@@ -147,7 +117,7 @@ struct WindowManagerPopoverView: View {
 
   // Inline expandable settings shown under the lower divider.
   private var layoutSettingsSection: some View {
-    VStack(alignment: .leading, spacing: 10) {
+    VStack(alignment: .leading, spacing: 8) {
       settingRow(
         title: "Spacing",
         description: "Gap before the gear icon."
@@ -181,31 +151,38 @@ struct WindowManagerPopoverView: View {
         Button("Reset All Settings") {
           model.resetMenuLayoutSettingsToDefaults()
         }
-        .font(.system(size: 12, weight: .semibold))
+        .font(.system(size: 11, weight: .semibold))
       }
       .font(.system(size: 12))
 
       Divider()
 
-      HStack(spacing: 8) {
+      LazyVGrid(
+        columns: [
+          GridItem(.flexible(), spacing: 8),
+          GridItem(.flexible(), spacing: 8),
+        ],
+        spacing: 8
+      ) {
         Button("Refresh Open Windows") {
           model.refreshWindowsNow()
         }
+        .frame(maxWidth: .infinity)
 
         Button("Restart Window Polling") {
           model.resetAccessibilitySession()
         }
-      }
-      .font(.system(size: 12))
+        .frame(maxWidth: .infinity)
 
-      HStack(spacing: 8) {
         Button("Accessibility Settings…") {
           model.openAccessibilitySettings()
         }
+        .frame(maxWidth: .infinity)
 
         Button("Copy Diagnostics") {
           model.copyDiagnosticsToPasteboard()
         }
+        .frame(maxWidth: .infinity)
       }
       .font(.system(size: 12))
 
@@ -216,7 +193,48 @@ struct WindowManagerPopoverView: View {
         .font(.system(size: 12))
       }
     }
-    .padding(10)
+  }
+
+  private var openWindowsSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("Click a window name to focus it. Use the pin icon to keep it in your strip.")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+
+      if !model.isAccessibilityTrusted {
+        accessibilityWarning
+      }
+
+      if orderedWindows.isEmpty {
+        Text("No eligible windows found")
+          .font(.system(size: 12))
+          .foregroundStyle(.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.vertical, 12)
+      } else {
+        ScrollView {
+          LazyVStack(spacing: 4) {
+            ForEach(orderedWindows) { window in
+              let isPinned = model.isPinned(window: window)
+              let rowLabel = displayLabel(for: window)
+              WindowManagerWindowRow(
+                displayLabel: rowLabel,
+                nameTooltip: rowLabel,
+                renameInfoTooltip: renamedWindowTooltip(for: window),
+                isPinned: isPinned,
+                onFocus: { model.activateWindow(window) },
+                onTogglePin: { model.togglePin(for: window) },
+                onRename: {
+                  guard let pinnedItem = model.pinnedItem(for: window) else { return }
+                  model.promptRename(for: pinnedItem)
+                }
+              )
+            }
+          }
+        }
+        .frame(maxHeight: 300)
+      }
+    }
   }
 
   private func settingRow<Control: View>(
@@ -224,12 +242,12 @@ struct WindowManagerPopoverView: View {
     description: String,
     @ViewBuilder control: () -> Control
   ) -> some View {
-    HStack(alignment: .top, spacing: 12) {
-      VStack(alignment: .leading, spacing: 2) {
+    HStack(alignment: .top, spacing: 10) {
+      VStack(alignment: .leading, spacing: 1) {
         Text(title)
           .font(.system(size: 12, weight: .semibold))
         Text(description)
-          .font(.caption)
+          .font(.system(size: 11))
           .foregroundStyle(.secondary)
       }
       Spacer(minLength: 8)
