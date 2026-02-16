@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Xcode user-specific state
+*.xcuserstate
+xcuserdata/
+
+# Local build output
+build/
+DerivedData/
+.DerivedData/
+
+# Swift Package Manager
+.build/
+
+# Misc editor temp files
+*.swp
+*.tmp
