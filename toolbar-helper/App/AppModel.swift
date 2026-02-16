@@ -5,6 +5,12 @@ import Foundation
 // App-level coordinator that binds permission, window, and pin stores.
 @MainActor
 final class AppModel: ObservableObject {
+  static let menuTrailingSpacingRange: ClosedRange<Double> = 0...2500
+  static let menuPinnedItemMinWidthRange: ClosedRange<Double> = 0...200
+  private static let defaultMenuTrailingSpacing = 0.0
+  private static let menuTrailingSpacingKey = "MenuStripTrailingSpacing.v1"
+  private static let menuPinnedItemMinWidthKey = "MenuStripPinnedItemMinWidth.v1"
+
   @Published private(set) var windows: [WindowSnapshot] = []
   @Published private(set) var pinnedItems: [PinnedWindowItem] = []
   @Published private(set) var isAccessibilityTrusted = false
@@ -14,21 +20,57 @@ final class AppModel: ObservableObject {
 
   // Controls whether missing pinned items are highlighted in red.
   @Published var highlightMissingPins = false
+  // Gap between pinned items and the gear icon, used to shift items left.
+  @Published var menuTrailingSpacing = 0.0 {
+    didSet {
+      userDefaults.set(menuTrailingSpacing, forKey: Self.menuTrailingSpacingKey)
+    }
+  }
+  // Minimum width applied to each pinned tab in the menu bar strip.
+  @Published var menuPinnedItemMinWidth = 0.0 {
+    didSet {
+      userDefaults.set(menuPinnedItemMinWidth, forKey: Self.menuPinnedItemMinWidthKey)
+    }
+  }
 
   let permissionManager: AccessibilityPermissionManager
 
   private let windowStore: WindowStore
   private let pinnedStore: PinnedStore
+  private let userDefaults: UserDefaults
   private let iconCache = NSCache<NSString, NSImage>()
   private var cancellables: Set<AnyCancellable> = []
 
   // Injects dependencies for testing and previews.
   init(
     permissionManager: AccessibilityPermissionManager,
-    pinnedStore: PinnedStore
+    pinnedStore: PinnedStore,
+    userDefaults: UserDefaults = .standard
   ) {
     self.permissionManager = permissionManager
     self.pinnedStore = pinnedStore
+    self.userDefaults = userDefaults
+
+    let storedMenuTrailingSpacing: Double
+    if userDefaults.object(forKey: Self.menuTrailingSpacingKey) == nil {
+      storedMenuTrailingSpacing = Self.defaultMenuTrailingSpacing
+    } else {
+      storedMenuTrailingSpacing = userDefaults.double(forKey: Self.menuTrailingSpacingKey)
+    }
+
+    menuTrailingSpacing = min(
+      max(
+        storedMenuTrailingSpacing,
+        Self.menuTrailingSpacingRange.lowerBound),
+      Self.menuTrailingSpacingRange.upperBound
+    )
+    menuPinnedItemMinWidth = min(
+      max(
+        userDefaults.double(forKey: Self.menuPinnedItemMinWidthKey),
+        Self.menuPinnedItemMinWidthRange.lowerBound
+      ),
+      Self.menuPinnedItemMinWidthRange.upperBound
+    )
     windowStore = WindowStore(permissionManager: permissionManager)
     bindStores()
   }
@@ -37,7 +79,8 @@ final class AppModel: ObservableObject {
   convenience init() {
     self.init(
       permissionManager: AccessibilityPermissionManager(),
-      pinnedStore: PinnedStore()
+      pinnedStore: PinnedStore(),
+      userDefaults: .standard
     )
   }
 

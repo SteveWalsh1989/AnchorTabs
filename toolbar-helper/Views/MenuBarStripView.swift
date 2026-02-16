@@ -23,7 +23,12 @@ struct MenuBarStripView: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
             }
-            .buttonStyle(TabButtonStyle(pinnedItem.isMissing ? .missing : .active))
+            .buttonStyle(
+              TabButtonStyle(
+                pinnedItem.isMissing ? .missing : .active,
+                minWidth: model.menuPinnedItemMinWidth
+              )
+            )
             .help(tooltip(for: pinnedItem))
             .draggable(pinnedItem.id.uuidString)
             .dropDestination(for: String.self) { items, _ in
@@ -106,6 +111,10 @@ struct MenuBarStripView: View {
         )
       }
 
+      Color.clear
+        .frame(width: model.menuTrailingSpacing, height: 1)
+        .allowsHitTesting(false)
+
       Button {
         isShowingWindowManager.toggle()
       } label: {
@@ -175,9 +184,11 @@ private struct TabButtonStyle: ButtonStyle {
   }
 
   let kind: Kind
+  let minWidth: Double
 
-  init(_ kind: Kind) {
+  init(_ kind: Kind, minWidth: Double = 0) {
     self.kind = kind
+    self.minWidth = minWidth
   }
 
   // Applies compact tab styling to status bar buttons.
@@ -186,11 +197,21 @@ private struct TabButtonStyle: ButtonStyle {
       .font(.system(size: 11, weight: .medium))
       .padding(.horizontal, 10)
       .padding(.vertical, 3)
+      .frame(minWidth: minWidth, alignment: .center)
       .background(
         RoundedRectangle(cornerRadius: 7)
           .fill(backgroundColor.opacity(configuration.isPressed ? 0.6 : 1))
       )
       .foregroundStyle(foregroundColor)
+      .overlay(alignment: .bottom) {
+        if kind == .missing {
+          Rectangle()
+            .fill(Color.red.opacity(0.85))
+            .frame(height: 1)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 1)
+        }
+      }
   }
 
   // Chooses background color by tab state.
@@ -199,7 +220,7 @@ private struct TabButtonStyle: ButtonStyle {
     case .active:
       Color(nsColor: .controlBackgroundColor)
     case .missing:
-      Color.red.opacity(0.18)
+      Color(nsColor: .controlBackgroundColor)
     case .warning:
       Color.orange.opacity(0.22)
     case .neutral:
@@ -211,7 +232,7 @@ private struct TabButtonStyle: ButtonStyle {
   private var foregroundColor: Color {
     switch kind {
     case .missing:
-      Color.red
+      Color.primary
     case .warning:
       Color.orange
     case .active, .neutral:

@@ -3,17 +3,16 @@ import SwiftUI
 // Popover UI for browsing open windows and managing pin/rename actions.
 struct WindowManagerPopoverView: View {
   @ObservedObject var model: AppModel
-  @State private var hoveredWindowLabel: String?
+  @State private var isShowingSpacingSettings = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text(hoveredWindowLabel ?? "Open Windows")
+      Text("Open Windows")
         .font(.headline)
         .lineLimit(1)
         .truncationMode(.tail)
-        .help(hoveredWindowLabel ?? "Open windows")
 
-      Text("Click a window name to focus it. Use the pin column to keep it in your strip.")
+      Text("Click a window name to focus it. Use the pin icon to keep it in your strip.")
         .font(.caption)
         .foregroundStyle(.secondary)
 
@@ -21,9 +20,7 @@ struct WindowManagerPopoverView: View {
         accessibilityWarning
       }
 
-      columnHeader
-
-      if model.windows.isEmpty {
+      if orderedWindows.isEmpty {
         Text("No eligible windows found")
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
@@ -32,20 +29,19 @@ struct WindowManagerPopoverView: View {
       } else {
         ScrollView {
           LazyVStack(spacing: 4) {
-            ForEach(model.windows) { window in
+            ForEach(orderedWindows) { window in
               let isPinned = model.isPinned(window: window)
+              let rowLabel = displayLabel(for: window)
               WindowManagerWindowRow(
-                displayLabel: displayLabel(for: window),
-                fullLabel: fullLabel(for: window),
+                displayLabel: rowLabel,
+                nameTooltip: rowLabel,
+                renameInfoTooltip: renamedWindowTooltip(for: window),
                 isPinned: isPinned,
                 onFocus: { model.activateWindow(window) },
                 onTogglePin: { model.togglePin(for: window) },
                 onRename: {
                   guard let pinnedItem = model.pinnedItem(for: window) else { return }
                   model.promptRename(for: pinnedItem)
-                },
-                onHoverChanged: { isHovering in
-                  hoveredWindowLabel = isHovering ? fullLabel(for: window) : nil
                 }
               )
             }
@@ -56,26 +52,33 @@ struct WindowManagerPopoverView: View {
 
       Divider()
 
-      HStack(spacing: 8) {
-        Button("Refresh") {
-          model.refreshWindowsNow()
-        }
-
-        Button("Restart Polling") {
-          model.resetAccessibilitySession()
-        }
-
+      HStack {
         Spacer()
 
         Menu {
+          Button("Refresh Open Windows") {
+            model.refreshWindowsNow()
+          }
+
+          Button("Restart Window Polling") {
+            model.resetAccessibilitySession()
+          }
+
           if !model.isAccessibilityTrusted {
+            Divider()
             Button("Enable Accessibility Access") {
               model.requestAccessibilityPermission()
             }
           }
+
+          Button("Spacing…") {
+            isShowingSpacingSettings = true
+          }
+
           Button("Accessibility Settings…") {
             model.openAccessibilitySettings()
           }
+
           Divider()
           Button("Copy Diagnostics") {
             model.copyDiagnosticsToPasteboard()
@@ -88,7 +91,42 @@ struct WindowManagerPopoverView: View {
       .font(.system(size: 12))
     }
     .padding(12)
-    .frame(width: 470)
+    .frame(width: 400)
+    .sheet(isPresented: $isShowingSpacingSettings) {
+      StripSpacingSheetView(model: model)
+    }
+  }
+
+  // Returns windows with currently pinned items first, preserving pin order.
+  private var orderedWindows: [WindowSnapshot] {
+    var pinnedRank: [String: Int] = [:]
+    for (index, runtimeID) in model.pinnedItems.compactMap({ $0.window?.id }).enumerated() {
+      if pinnedRank[runtimeID] == nil {
+        pinnedRank[runtimeID] = index
+      }
+    }
+
+    return model.windows.enumerated()
+      .sorted { lhs, rhs in
+        let leftRank = pinnedRank[lhs.element.id]
+        let rightRank = pinnedRank[rhs.element.id]
+
+        switch (leftRank, rightRank) {
+        case (let left?, let right?):
+          if left != right {
+            return left < right
+          }
+        case (.some, .none):
+          return true
+        case (.none, .some):
+          return false
+        case (.none, .none):
+          break
+        }
+
+        return lhs.offset < rhs.offset
+      }
+      .map(\.element)
   }
 
   // Guidance shown when Accessibility permission is currently unavailable.
@@ -114,20 +152,6 @@ struct WindowManagerPopoverView: View {
     )
   }
 
-  // Compact column labels for the row layout.
-  private var columnHeader: some View {
-    HStack(spacing: 10) {
-      Text("Pin")
-        .frame(width: 26, alignment: .center)
-      Text("Window")
-        .frame(maxWidth: .infinity, alignment: .leading)
-      Text("Rename")
-        .frame(width: 46, alignment: .trailing)
-    }
-    .font(.caption2.weight(.semibold))
-    .foregroundStyle(.secondary)
-  }
-
   // Chooses row title, preferring a custom pinned label when one exists.
   private func displayLabel(for window: WindowSnapshot) -> String {
     guard let pinnedItem = model.pinnedItem(for: window) else { return window.menuTitle }
@@ -136,25 +160,106 @@ struct WindowManagerPopoverView: View {
     return customName.isEmpty ? window.menuTitle : customName
   }
 
-  // Builds full hover text, keeping original app/title visible when renamed.
-  private func fullLabel(for window: WindowSnapshot) -> String {
-    guard let pinnedItem = model.pinnedItem(for: window) else { return window.menuTitle }
+  // Returns expanded details for renamed pins to show in an info tooltip.
+  private func renamedWindowTooltip(for window: WindowSnapshot) -> String? {
+    guard let pinnedItem = model.pinnedItem(for: window) else { return nil }
     let customName =
       pinnedItem.reference.customName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    guard !customName.isEmpty else { return window.menuTitle }
-    return "\(customName) (\(window.menuTitle))"
+    guard !customName.isEmpty else { return nil }
+    return "Renamed from: \(window.menuTitle)"
+  }
+}
+
+// Small sheet used from More -> Spacing to adjust strip position quickly.
+private struct StripSpacingSheetView: View {
+  @ObservedObject var model: AppModel
+  @Environment(\.dismiss) private var dismiss
+  @State private var draftMenuTrailingSpacing: Double
+  @State private var draftPinnedItemMinWidth: Double
+
+  init(model: AppModel) {
+    self.model = model
+    _draftMenuTrailingSpacing = State(initialValue: model.menuTrailingSpacing)
+    _draftPinnedItemMinWidth = State(initialValue: model.menuPinnedItemMinWidth)
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("Menu Strip Layout")
+        .font(.headline)
+
+      Text("Adjust values, then click Done to apply.")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+
+      VStack(alignment: .leading, spacing: 6) {
+        Text("Spacing")
+          .font(.headline)
+
+        Text("Adds gap between pinned items and the settings icon to move pinned items left.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+
+        HStack(spacing: 10) {
+          Slider(
+            value: $draftMenuTrailingSpacing,
+            in: AppModel.menuTrailingSpacingRange,
+            step: 2
+          )
+          Text("\(Int(draftMenuTrailingSpacing)) px")
+            .font(.system(size: 12, weight: .medium, design: .monospaced))
+            .frame(width: 58, alignment: .trailing)
+          Button("Reset") {
+            draftMenuTrailingSpacing = 0
+          }
+          .font(.system(size: 11))
+          .help("Reset spacing to 0")
+        }
+      }
+
+      VStack(alignment: .leading, spacing: 6) {
+        Text("Pinned Item Min Width")
+          .font(.headline)
+
+        Text("Sets the minimum width for each pinned tab in the menu bar strip.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+
+        HStack(spacing: 10) {
+          Slider(
+            value: $draftPinnedItemMinWidth,
+            in: AppModel.menuPinnedItemMinWidthRange,
+            step: 2
+          )
+          Text("\(Int(draftPinnedItemMinWidth)) px")
+            .font(.system(size: 12, weight: .medium, design: .monospaced))
+            .frame(width: 58, alignment: .trailing)
+        }
+      }
+
+      HStack {
+        Spacer()
+        Button("Done") {
+          model.menuTrailingSpacing = draftMenuTrailingSpacing
+          model.menuPinnedItemMinWidth = draftPinnedItemMinWidth
+          dismiss()
+        }
+      }
+    }
+    .padding(16)
+    .frame(width: 340)
   }
 }
 
 // Row used by the window popover list with pin, name, and rename affordances.
 private struct WindowManagerWindowRow: View {
   let displayLabel: String
-  let fullLabel: String
+  let nameTooltip: String
+  let renameInfoTooltip: String?
   let isPinned: Bool
   let onFocus: () -> Void
   let onTogglePin: () -> Void
   let onRename: () -> Void
-  let onHoverChanged: (Bool) -> Void
 
   @State private var isHovering = false
 
@@ -178,9 +283,20 @@ private struct WindowManagerWindowRow: View {
           .lineLimit(1)
           .truncationMode(.tail)
           .frame(maxWidth: .infinity, alignment: .leading)
+          .help(nameTooltip)
       }
       .buttonStyle(.plain)
-      .help(fullLabel)
+
+      if let renameInfoTooltip, isHovering {
+        Image(systemName: "info.circle")
+          .font(.system(size: 11))
+          .foregroundStyle(.secondary)
+          .frame(width: 14, alignment: .center)
+          .help(renameInfoTooltip)
+      } else {
+        Color.clear
+          .frame(width: 14, height: 14)
+      }
 
       if isPinned {
         Button {
@@ -189,13 +305,13 @@ private struct WindowManagerWindowRow: View {
           Image(systemName: "pencil")
         }
         .buttonStyle(.plain)
-        .frame(width: 46, alignment: .trailing)
+        .frame(width: 26, alignment: .trailing)
         .opacity(isHovering ? 1 : 0)
         .allowsHitTesting(isHovering)
-        .help("Rename pinned label")
+        .help("Rename")
       } else {
         Color.clear
-          .frame(width: 46, height: 14)
+          .frame(width: 26, height: 14)
       }
     }
     .padding(.horizontal, 8)
@@ -207,7 +323,6 @@ private struct WindowManagerWindowRow: View {
     .contentShape(Rectangle())
     .onHover { hovering in
       isHovering = hovering
-      onHoverChanged(hovering)
     }
   }
 

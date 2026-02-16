@@ -8,8 +8,8 @@ It runs as an `NSStatusItem` app (`LSUIElement`), supports multiple windows from
 
 - Menu bar app with no Dock presence.
 - Per-window pinning with support for multiple windows from the same app.
-- Open Windows list (icon + title + checkmark state) in the menu.
-- Pin/unpin, rename, and reset custom label actions.
+- Open Windows popover with pin/focus controls.
+- Row-level controls for pin/unpin and rename pinned labels.
 - Pinned tab click restores exact window focus by:
   - activating the app
   - unminimizing the window
@@ -17,14 +17,15 @@ It runs as an `NSStatusItem` app (`LSUIElement`), supports multiple windows from
 - Drag-and-drop reorder for visible pinned tabs.
 - Overflow menu for pinned tabs beyond visible capacity (default visible max: 10).
 - Missing-window state for closed/unmatched pins.
-- Diagnostics submenu with runtime counters and copy-to-clipboard report.
+- Diagnostics copy action in the popover's `More` menu.
 - Persistent pins and custom names via `UserDefaults`.
 - Accessibility implementation uses public AX APIs only.
 
 ## UI Notes
 
-- Main management menu is a single gear icon in the menu bar strip.
-- When Accessibility is not trusted, the orange warning icon opens macOS Accessibility settings directly.
+- Main management entry is a single gear icon that opens the window manager popover.
+- The orange Accessibility warning icon is clickable and opens macOS Accessibility settings directly.
+- The popover includes a `More` menu for refresh, restart polling, accessibility actions, and diagnostics copy.
 
 ## Tech Stack
 
@@ -42,6 +43,7 @@ It runs as an `NSStatusItem` app (`LSUIElement`), supports multiple windows from
   - `StatusBarController.swift` (status-item host)
 - `toolbar-helper/Views/`
   - `MenuBarStripView.swift` (menu bar UI/actions)
+  - `WindowManagerPopoverView.swift` (open windows popover UI)
   - `SettingsView.swift` (settings scene)
 - `toolbar-helper/Stores/`
   - `WindowStore.swift` (AX enumeration/focus/observer polling)
@@ -84,28 +86,31 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 ## Accessibility Setup
 
 1. Launch Toolbar Helper.
-2. If needed, use the gear menu -> Accessibility actions.
+2. Click the orange warning icon to open Accessibility settings directly, or open the gear popover and use `More`.
 3. In System Settings:
    - Privacy & Security -> Accessibility
    - enable `Toolbar Helper`
 4. If trust state appears stale, use:
-   - gear menu -> `Re-check Accessibility Status`
-   - or gear menu -> `Settings` -> `Restart Window Polling`
+   - popover -> `More` -> `Enable Accessibility Access`
+   - popover -> `More` -> `Restart Window Polling`
 
 ## Usage
 
-1. Click the gear icon in the strip.
-2. In `Open Windows`, pin/unpin or rename a window label.
-3. Click a pinned tab to focus that exact window.
-4. Drag pinned tabs to reorder.
-5. Use `…` overflow for additional pinned tabs.
-6. Open `Settings` -> `Diagnostics` to copy runtime diagnostics.
+1. Click the gear icon to open the window manager popover.
+2. In `Open Windows`:
+   - click the window name to focus it
+   - click the pin icon to pin/unpin it
+   - for pinned rows, use the pencil action to rename
+3. Click a pinned tab in the strip to focus that exact window.
+4. Drag pinned tabs in the strip to reorder.
+5. Use `…` overflow for pinned tabs beyond the visible strip.
+6. Open `More` in the popover to refresh, restart polling, open accessibility settings, or copy diagnostics.
 
 ## Troubleshooting
 
 ### Accessibility still appears disabled
 
-- Re-check status from the gear menu.
+- Use popover `More` actions (`Enable Accessibility Access` / `Restart Window Polling`).
 - Relaunch the app.
 - Reset AX permission and re-enable:
 
