@@ -3,7 +3,7 @@ import SwiftUI
 // Popover UI for browsing open windows and managing pin/rename actions.
 struct WindowManagerPopoverView: View {
   @ObservedObject var model: AppModel
-  @State private var isShowingSpacingSettings = false
+  @State private var isShowingLayoutSettings = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -55,46 +55,24 @@ struct WindowManagerPopoverView: View {
       HStack {
         Spacer()
 
-        Menu {
-          Button("Refresh Open Windows") {
-            model.refreshWindowsNow()
-          }
-
-          Button("Restart Window Polling") {
-            model.resetAccessibilitySession()
-          }
-
-          if !model.isAccessibilityTrusted {
-            Divider()
-            Button("Enable Accessibility Access") {
-              model.requestAccessibilityPermission()
-            }
-          }
-
-          Button("Spacing…") {
-            isShowingSpacingSettings = true
-          }
-
-          Button("Accessibility Settings…") {
-            model.openAccessibilitySettings()
-          }
-
-          Divider()
-          Button("Copy Diagnostics") {
-            model.copyDiagnosticsToPasteboard()
+        Button {
+          withAnimation(.easeInOut(duration: 0.15)) {
+            isShowingLayoutSettings.toggle()
           }
         } label: {
-          Label("More", systemImage: "ellipsis.circle")
+          Image(systemName: isShowingLayoutSettings ? "gearshape.fill" : "gearshape")
         }
-        .menuStyle(.borderlessButton)
+        .buttonStyle(.plain)
+        .help(isShowingLayoutSettings ? "Hide settings" : "Show settings")
       }
       .font(.system(size: 12))
+
+      if isShowingLayoutSettings {
+        layoutSettingsSection
+      }
     }
     .padding(12)
     .frame(width: 400)
-    .sheet(isPresented: $isShowingSpacingSettings) {
-      StripSpacingSheetView(model: model)
-    }
   }
 
   // Returns windows with currently pinned items first, preserving pin order.
@@ -168,86 +146,117 @@ struct WindowManagerPopoverView: View {
     guard !customName.isEmpty else { return nil }
     return "Renamed from: \(window.menuTitle)"
   }
-}
 
-// Small sheet used from More -> Spacing to adjust strip position quickly.
-private struct StripSpacingSheetView: View {
-  @ObservedObject var model: AppModel
-  @Environment(\.dismiss) private var dismiss
-  @State private var draftMenuTrailingSpacing: Double
-  @State private var draftPinnedItemMinWidth: Double
-
-  init(model: AppModel) {
-    self.model = model
-    _draftMenuTrailingSpacing = State(initialValue: model.menuTrailingSpacing)
-    _draftPinnedItemMinWidth = State(initialValue: model.menuPinnedItemMinWidth)
-  }
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("Menu Strip Layout")
+  // Inline expandable settings shown under the lower divider.
+  private var layoutSettingsSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("Settings")
         .font(.headline)
 
-      Text("Adjust values, then click Done to apply.")
+      HStack(spacing: 8) {
+        Button("Refresh Open Windows") {
+          model.refreshWindowsNow()
+        }
+
+        Button("Restart Window Polling") {
+          model.resetAccessibilitySession()
+        }
+      }
+      .font(.system(size: 12))
+
+      if !model.isAccessibilityTrusted {
+        Button("Enable Accessibility Access") {
+          model.requestAccessibilityPermission()
+        }
+        .font(.system(size: 12))
+      }
+
+      HStack(spacing: 8) {
+        Button("Accessibility Settings…") {
+          model.openAccessibilitySettings()
+        }
+
+        Button("Copy Diagnostics") {
+          model.copyDiagnosticsToPasteboard()
+        }
+      }
+      .font(.system(size: 12))
+
+      Divider()
+
+      numberInputSettingRow(
+        title: "Spacing",
+        description: "Adds gap between pinned items and the settings icon to move pinned items left.",
+        value: $model.menuTrailingSpacing,
+        range: AppModel.menuTrailingSpacingRange,
+        resetHelp: "Reset spacing to 0"
+      )
+
+      numberInputSettingRow(
+        title: "Pinned Item Min Width",
+        description: "Sets the minimum width for each pinned tab in the menu bar strip.",
+        value: $model.menuPinnedItemMinWidth,
+        range: AppModel.menuPinnedItemMinWidthRange,
+        resetHelp: "Reset pinned item min width to 0"
+      )
+
+      Toggle("Show red underline for missing pinned windows", isOn: $model.highlightMissingPins)
+        .font(.system(size: 12))
+    }
+    .padding(10)
+    .background(
+      RoundedRectangle(cornerRadius: 8)
+        .fill(Color.secondary.opacity(0.08))
+    )
+  }
+
+  private func numberInputSettingRow(
+    title: String,
+    description: String,
+    value: Binding<Double>,
+    range: ClosedRange<Double>,
+    resetHelp: String
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      Text(title)
+        .font(.headline)
+      Text(description)
         .font(.caption)
         .foregroundStyle(.secondary)
 
-      VStack(alignment: .leading, spacing: 6) {
-        Text("Spacing")
-          .font(.headline)
+      HStack(alignment: .center, spacing: 8) {
+        TextField(
+          "0",
+          value: clampedRoundedBinding(value, range: range),
+          format: .number.precision(.fractionLength(0))
+        )
+        .textFieldStyle(.roundedBorder)
+        .frame(width: 100)
 
-        Text("Adds gap between pinned items and the settings icon to move pinned items left.")
-          .font(.caption)
+        Text("px (max \(Int(range.upperBound)))")
+          .font(.system(size: 12))
           .foregroundStyle(.secondary)
 
-        HStack(spacing: 10) {
-          Slider(
-            value: $draftMenuTrailingSpacing,
-            in: AppModel.menuTrailingSpacingRange,
-            step: 2
-          )
-          Text("\(Int(draftMenuTrailingSpacing)) px")
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
-            .frame(width: 58, alignment: .trailing)
-          Button("Reset") {
-            draftMenuTrailingSpacing = 0
-          }
-          .font(.system(size: 11))
-          .help("Reset spacing to 0")
+        Button("Reset") {
+          value.wrappedValue = range.lowerBound
         }
-      }
-
-      VStack(alignment: .leading, spacing: 6) {
-        Text("Pinned Item Min Width")
-          .font(.headline)
-
-        Text("Sets the minimum width for each pinned tab in the menu bar strip.")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-
-        HStack(spacing: 10) {
-          Slider(
-            value: $draftPinnedItemMinWidth,
-            in: AppModel.menuPinnedItemMinWidthRange,
-            step: 2
-          )
-          Text("\(Int(draftPinnedItemMinWidth)) px")
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
-            .frame(width: 58, alignment: .trailing)
-        }
-      }
-
-      HStack {
-        Spacer()
-        Button("Done") {
-          model.menuTrailingSpacing = draftMenuTrailingSpacing
-          model.menuPinnedItemMinWidth = draftPinnedItemMinWidth
-          dismiss()
-        }
+        .font(.system(size: 11))
+        .disabled(abs(value.wrappedValue - range.lowerBound) < 0.001)
+        .help(resetHelp)
       }
     }
-    .padding(16)
-    .frame(width: 340)
+  }
+
+  private func clampedRoundedBinding(
+    _ value: Binding<Double>,
+    range: ClosedRange<Double>
+  ) -> Binding<Double> {
+    Binding(
+      get: { value.wrappedValue },
+      set: { newValue in
+        value.wrappedValue = min(max(newValue.rounded(), range.lowerBound), range.upperBound)
+      }
+    )
   }
 }
 

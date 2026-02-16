@@ -5,6 +5,10 @@ struct MenuBarStripView: View {
   @ObservedObject var model: AppModel
   @State private var isShowingWindowManager = false
 
+  private var effectiveTrailingSpacing: Double {
+    model.isAccessibilityTrusted ? model.menuTrailingSpacing : 0
+  }
+
   // Renders pinned tabs plus one consolidated settings/menu button.
   var body: some View {
     HStack(spacing: 6) {
@@ -26,7 +30,8 @@ struct MenuBarStripView: View {
             .buttonStyle(
               TabButtonStyle(
                 pinnedItem.isMissing ? .missing : .active,
-                minWidth: model.menuPinnedItemMinWidth
+                minWidth: model.menuPinnedItemMinWidth,
+                showsMissingUnderline: model.highlightMissingPins
               )
             )
             .help(tooltip(for: pinnedItem))
@@ -111,9 +116,11 @@ struct MenuBarStripView: View {
         )
       }
 
-      Color.clear
-        .frame(width: model.menuTrailingSpacing, height: 1)
-        .allowsHitTesting(false)
+      if effectiveTrailingSpacing > 0 {
+        Color.clear
+          .frame(width: effectiveTrailingSpacing, height: 1)
+          .allowsHitTesting(false)
+      }
 
       Button {
         isShowingWindowManager.toggle()
@@ -130,6 +137,7 @@ struct MenuBarStripView: View {
         WindowManagerPopoverView(model: model)
       }
     }
+    .frame(maxWidth: .infinity, alignment: .trailing)
     .padding(.horizontal, 6)
     .padding(.vertical, 2)
     .frame(minHeight: 24)
@@ -185,10 +193,12 @@ private struct TabButtonStyle: ButtonStyle {
 
   let kind: Kind
   let minWidth: Double
+  let showsMissingUnderline: Bool
 
-  init(_ kind: Kind, minWidth: Double = 0) {
+  init(_ kind: Kind, minWidth: Double = 0, showsMissingUnderline: Bool = true) {
     self.kind = kind
     self.minWidth = minWidth
+    self.showsMissingUnderline = showsMissingUnderline
   }
 
   // Applies compact tab styling to status bar buttons.
@@ -204,7 +214,7 @@ private struct TabButtonStyle: ButtonStyle {
       )
       .foregroundStyle(foregroundColor)
       .overlay(alignment: .bottom) {
-        if kind == .missing {
+        if kind == .missing && showsMissingUnderline {
           Rectangle()
             .fill(Color.red.opacity(0.85))
             .frame(height: 1)

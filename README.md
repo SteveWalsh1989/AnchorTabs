@@ -1,6 +1,6 @@
-# Toolbar Helper (macOS)
+# AnchorTabs (macOS)
 
-Toolbar Helper is a macOS menu bar app for pinning and restoring specific windows (not just apps) using Accessibility APIs.
+AnchorTabs is a macOS menu bar app for pinning and restoring specific windows (not just apps) using Accessibility APIs.
 
 It runs as an `NSStatusItem` app (`LSUIElement`), supports multiple windows from the same app, and lets you jump back to exact windows with one click.
 
@@ -85,11 +85,11 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 ## Accessibility Setup
 
-1. Launch Toolbar Helper.
+1. Launch AnchorTabs.
 2. Click the orange warning icon to open Accessibility settings directly, or open the gear popover and use `More`.
 3. In System Settings:
    - Privacy & Security -> Accessibility
-   - enable `Toolbar Helper`
+   - enable the app with bundle id `com.stevewalsh.ToolbarHelper`
 4. If trust state appears stale, use:
    - popover -> `More` -> `Enable Accessibility Access`
    - popover -> `More` -> `Restart Window Polling`
@@ -128,3 +128,9 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
 - No network dependency for core behavior.
 - Pinned window metadata and custom labels are local-only (`UserDefaults`).
+
+## Notes on Naming
+
+- App branding name: `AnchorTabs`
+- Current Xcode target/scheme/repo path names remain `toolbar-helper` for now.
+- Bundle identifier remains `com.stevewalsh.ToolbarHelper` unless changed later.

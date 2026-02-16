@@ -34,15 +34,17 @@ struct SettingsView: View {
         Text("Spacing")
           .font(.headline)
 
-        HStack(spacing: 10) {
-          Slider(
-            value: $model.menuTrailingSpacing,
-            in: AppModel.menuTrailingSpacingRange,
-            step: 2
+        HStack(spacing: 8) {
+          TextField(
+            "0",
+            value: spacingInputBinding,
+            format: .number.precision(.fractionLength(0))
           )
-          Text("\(Int(model.menuTrailingSpacing)) px")
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
-            .frame(width: 58, alignment: .trailing)
+          .textFieldStyle(.roundedBorder)
+          .frame(width: 100)
+          Text("px (max 5000)")
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
         }
 
         Text("Adds gap between pinned items and the settings icon to move pinned items left.")
@@ -54,15 +56,17 @@ struct SettingsView: View {
         Text("Pinned Item Min Width")
           .font(.headline)
 
-        HStack(spacing: 10) {
-          Slider(
-            value: $model.menuPinnedItemMinWidth,
-            in: AppModel.menuPinnedItemMinWidthRange,
-            step: 2
+        HStack(spacing: 8) {
+          TextField(
+            "0",
+            value: minWidthInputBinding,
+            format: .number.precision(.fractionLength(0))
           )
-          Text("\(Int(model.menuPinnedItemMinWidth)) px")
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
-            .frame(width: 58, alignment: .trailing)
+          .textFieldStyle(.roundedBorder)
+          .frame(width: 100)
+          Text("px (max 5000)")
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
         }
 
         Text("Sets the minimum width for each pinned tab in the menu bar strip.")
@@ -74,5 +78,27 @@ struct SettingsView: View {
     }
     .padding(18)
     .frame(width: 420, height: 290)
+  }
+
+  private var spacingInputBinding: Binding<Double> {
+    Binding(
+      get: { model.menuTrailingSpacing },
+      set: { newValue in
+        model.menuTrailingSpacing = clampedRounded(newValue, range: AppModel.menuTrailingSpacingRange)
+      }
+    )
+  }
+
+  private var minWidthInputBinding: Binding<Double> {
+    Binding(
+      get: { model.menuPinnedItemMinWidth },
+      set: { newValue in
+        model.menuPinnedItemMinWidth = clampedRounded(newValue, range: AppModel.menuPinnedItemMinWidthRange)
+      }
+    )
+  }
+
+  private func clampedRounded(_ value: Double, range: ClosedRange<Double>) -> Double {
+    min(max(value.rounded(), range.lowerBound), range.upperBound)
   }
 }

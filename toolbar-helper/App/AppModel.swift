@@ -5,11 +5,12 @@ import Foundation
 // App-level coordinator that binds permission, window, and pin stores.
 @MainActor
 final class AppModel: ObservableObject {
-  static let menuTrailingSpacingRange: ClosedRange<Double> = 0...2500
-  static let menuPinnedItemMinWidthRange: ClosedRange<Double> = 0...200
+  static let menuTrailingSpacingRange: ClosedRange<Double> = 0...5000
+  static let menuPinnedItemMinWidthRange: ClosedRange<Double> = 0...5000
   private static let defaultMenuTrailingSpacing = 0.0
-  private static let menuTrailingSpacingKey = "MenuStripTrailingSpacing.v1"
-  private static let menuPinnedItemMinWidthKey = "MenuStripPinnedItemMinWidth.v1"
+  private static let menuTrailingSpacingKey = "MenuStripTrailingSpacing.v2"
+  private static let menuPinnedItemMinWidthKey = "MenuStripPinnedItemMinWidth.v2"
+  private static let highlightMissingPinsKey = "HighlightMissingPins.v1"
 
   @Published private(set) var windows: [WindowSnapshot] = []
   @Published private(set) var pinnedItems: [PinnedWindowItem] = []
@@ -19,7 +20,11 @@ final class AppModel: ObservableObject {
   @Published private(set) var pinnedDiagnostics = PinnedStoreDiagnostics.empty
 
   // Controls whether missing pinned items are highlighted in red.
-  @Published var highlightMissingPins = false
+  @Published var highlightMissingPins = true {
+    didSet {
+      userDefaults.set(highlightMissingPins, forKey: Self.highlightMissingPinsKey)
+    }
+  }
   // Gap between pinned items and the gear icon, used to shift items left.
   @Published var menuTrailingSpacing = 0.0 {
     didSet {
@@ -71,6 +76,11 @@ final class AppModel: ObservableObject {
       ),
       Self.menuPinnedItemMinWidthRange.upperBound
     )
+    if userDefaults.object(forKey: Self.highlightMissingPinsKey) == nil {
+      highlightMissingPins = true
+    } else {
+      highlightMissingPins = userDefaults.bool(forKey: Self.highlightMissingPinsKey)
+    }
     windowStore = WindowStore(permissionManager: permissionManager)
     bindStores()
   }
