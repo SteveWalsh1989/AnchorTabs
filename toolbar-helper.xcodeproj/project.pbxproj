@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		2C8085542F430FD100CCD623 /* toolbar-helper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "toolbar-helper.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A1C0F5A2F50000100CCD623 /* toolbar-helperTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "toolbar-helperTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +17,22 @@
 			path = "toolbar-helper";
 			sourceTree = "<group>";
 		};
+		9A1C0F5B2F50000100CCD623 /* toolbar-helperTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "toolbar-helperTests";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		2C8085512F430FD100CCD623 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9A1C0F5C2F50000100CCD623 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +46,7 @@
 			isa = PBXGroup;
 			children = (
 				2C8085562F430FD100CCD623 /* toolbar-helper */,
+				9A1C0F5B2F50000100CCD623 /* toolbar-helperTests */,
 				2C8085552F430FD100CCD623 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +55,7 @@
 			isa = PBXGroup;
 			children = (
 				2C8085542F430FD100CCD623 /* toolbar-helper.app */,
+				9A1C0F5A2F50000100CCD623 /* toolbar-helperTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +85,29 @@
 			productReference = 2C8085542F430FD100CCD623 /* toolbar-helper.app */;
 			productType = "com.apple.product-type.application";
 		};
+		9A1C0F5F2F50000100CCD623 /* toolbar-helperTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9A1C0F602F50000100CCD623 /* Build configuration list for PBXNativeTarget "toolbar-helperTests" */;
+			buildPhases = (
+				9A1C0F5E2F50000100CCD623 /* Sources */,
+				9A1C0F5C2F50000100CCD623 /* Frameworks */,
+				9A1C0F5D2F50000100CCD623 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9A1C0F632F50000100CCD623 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				9A1C0F5B2F50000100CCD623 /* toolbar-helperTests */,
+			);
+			name = "toolbar-helperTests";
+			packageProductDependencies = (
+			);
+			productName = "toolbar-helperTests";
+			productReference = 9A1C0F5A2F50000100CCD623 /* toolbar-helperTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -82,6 +120,10 @@
 				TargetAttributes = {
 					2C8085532F430FD100CCD623 = {
 						CreatedOnToolsVersion = 26.2;
+					};
+					9A1C0F5F2F50000100CCD623 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 2C8085532F430FD100CCD623;
 					};
 				};
 			};
@@ -100,12 +142,20 @@
 			projectRoot = "";
 			targets = (
 				2C8085532F430FD100CCD623 /* toolbar-helper */,
+				9A1C0F5F2F50000100CCD623 /* toolbar-helperTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		2C8085522F430FD100CCD623 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9A1C0F5D2F50000100CCD623 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +172,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9A1C0F5E2F50000100CCD623 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		9A1C0F642F50000100CCD623 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2C80854C2F430FD100CCD623 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2C8085532F430FD100CCD623;
+			remoteInfo = "toolbar-helper";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		9A1C0F632F50000100CCD623 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2C8085532F430FD100CCD623 /* toolbar-helper */;
+			targetProxy = 9A1C0F642F50000100CCD623 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		2C80855D2F430FD300CCD623 /* Debug */ = {
@@ -327,6 +402,42 @@
 			};
 			name = Release;
 		};
+		9A1C0F612F50000100CCD623 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stevewalsh.ToolbarHelperTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_TARGET_NAME = "toolbar-helper";
+			};
+			name = Debug;
+		};
+		9A1C0F622F50000100CCD623 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stevewalsh.ToolbarHelperTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_TARGET_NAME = "toolbar-helper";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -344,6 +455,15 @@
 			buildConfigurations = (
 				2C8085602F430FD300CCD623 /* Debug */,
 				2C8085612F430FD300CCD623 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9A1C0F602F50000100CCD623 /* Build configuration list for PBXNativeTarget "toolbar-helperTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9A1C0F612F50000100CCD623 /* Debug */,
+				9A1C0F622F50000100CCD623 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

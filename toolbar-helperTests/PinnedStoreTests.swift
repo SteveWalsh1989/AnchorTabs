@@ -3,6 +3,7 @@ import XCTest
 
 @testable import toolbar_helper
 
+@MainActor
 final class PinnedStoreTests: XCTestCase {
   func testPinMatcherPrefersRuntimeID() {
     let reference = makeReference(
@@ -353,6 +354,7 @@ private func makeWindow(
   )
 }
 
+@MainActor
 private func makeReference(
   id: UUID = UUID(),
   bundleID: String,
