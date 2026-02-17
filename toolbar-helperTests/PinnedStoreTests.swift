@@ -278,6 +278,54 @@ final class PinnedStoreTests: XCTestCase {
     XCTAssertEqual(secondMatchAfter, secondWindow.id)
     defaults.removePersistentDomain(forName: suiteName)
   }
+
+  @MainActor
+  func testPinnedStoreRefreshesStoredWindowNamesAndKeepsThemWhenMissing() {
+    let suiteName = "PinnedStoreTests.\(UUID().uuidString)"
+    guard let defaults = UserDefaults(suiteName: suiteName) else {
+      XCTFail("Unable to create test defaults suite")
+      return
+    }
+    defaults.removePersistentDomain(forName: suiteName)
+
+    let initialWindow = makeWindow(
+      id: "600-3",
+      pid: 600,
+      bundleID: "com.example.writer",
+      appName: "Writer",
+      title: "Draft",
+      windowNumber: 3,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 140, y: 90, width: 1200, height: 780)
+    )
+
+    let renamedWindow = makeWindow(
+      id: "600-3",
+      pid: 600,
+      bundleID: "com.example.writer",
+      appName: "Writer Pro",
+      title: "Final Draft",
+      windowNumber: 3,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 140, y: 90, width: 1200, height: 780)
+    )
+
+    let store = PinnedStore(userDefaults: defaults)
+    store.reconcile(with: [initialWindow])
+    store.togglePin(for: initialWindow)
+    store.reconcile(with: [renamedWindow])
+    store.reconcile(with: [])
+
+    XCTAssertEqual(store.pinnedItems.count, 1)
+    XCTAssertTrue(store.pinnedItems[0].isMissing)
+    XCTAssertEqual(store.pinnedItems[0].reference.title, "Final Draft")
+    XCTAssertEqual(store.pinnedItems[0].reference.appName, "Writer Pro")
+    XCTAssertEqual(store.pinnedItems[0].displayTitle, "Final Draft")
+    XCTAssertEqual(store.pinnedItems[0].displayAppName, "Writer Pro")
+    defaults.removePersistentDomain(forName: suiteName)
+  }
 }
 
 private func makeWindow(

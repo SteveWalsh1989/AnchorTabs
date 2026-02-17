@@ -12,7 +12,6 @@ final class AppModel: ObservableObject {
   private static let menuPinnedItemMinWidthKey = "MenuStripPinnedItemMinWidth.v2"
   private static let highlightMissingPinsKey = "HighlightMissingPins.v1"
   private static let highlightFocusedWindowKey = "HighlightFocusedWindow.v1"
-  private static let hideMissingPinsKey = "HideMissingPins.v1"
 
   @Published private(set) var windows: [WindowSnapshot] = []
   @Published private(set) var pinnedItems: [PinnedWindowItem] = []
@@ -32,12 +31,6 @@ final class AppModel: ObservableObject {
   @Published var highlightFocusedWindow = true {
     didSet {
       userDefaults.set(highlightFocusedWindow, forKey: Self.highlightFocusedWindowKey)
-    }
-  }
-  // Controls whether missing pinned tabs are hidden from the menu strip.
-  @Published var hideMissingPins = false {
-    didSet {
-      userDefaults.set(hideMissingPins, forKey: Self.hideMissingPinsKey)
     }
   }
   // Gap between pinned items and the gear icon, used to shift items left.
@@ -101,11 +94,6 @@ final class AppModel: ObservableObject {
     } else {
       highlightFocusedWindow = userDefaults.bool(forKey: Self.highlightFocusedWindowKey)
     }
-    if userDefaults.object(forKey: Self.hideMissingPinsKey) == nil {
-      hideMissingPins = false
-    } else {
-      hideMissingPins = userDefaults.bool(forKey: Self.hideMissingPinsKey)
-    }
     windowStore = WindowStore(permissionManager: permissionManager)
     bindStores()
   }
@@ -119,22 +107,14 @@ final class AppModel: ObservableObject {
     )
   }
 
-  // Pinned tabs after applying missing-window visibility preference.
-  private var filteredPinnedItems: [PinnedWindowItem] {
-    if hideMissingPins {
-      return pinnedItems.filter { !$0.isMissing }
-    }
-    return pinnedItems
-  }
-
   // Pinned tabs shown directly in the strip.
   var visiblePinnedItems: [PinnedWindowItem] {
-    Array(filteredPinnedItems.prefix(maxVisiblePinnedTabs))
+    Array(pinnedItems.prefix(maxVisiblePinnedTabs))
   }
 
   // Pinned tabs that overflow into the ellipsis menu.
   var overflowPinnedItems: [PinnedWindowItem] {
-    Array(filteredPinnedItems.dropFirst(maxVisiblePinnedTabs))
+    Array(pinnedItems.dropFirst(maxVisiblePinnedTabs))
   }
 
   // Starts permission refresh and window tracking.
@@ -185,7 +165,6 @@ final class AppModel: ObservableObject {
     menuPinnedItemMinWidth = 0
     highlightMissingPins = true
     highlightFocusedWindow = true
-    hideMissingPins = false
   }
 
   // Builds a copyable diagnostics report for bug triage.

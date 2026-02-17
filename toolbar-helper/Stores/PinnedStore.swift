@@ -50,10 +50,12 @@ final class PinnedStore: ObservableObject {
         consumedWindowIDs.insert(match.window.id)
         matchedPins += 1
         methodCounts[match.method, default: 0] += 1
+        let storedTitle = canonicalStoredTitle(for: match.window)
+        let storedAppName = canonicalStoredAppName(for: match.window)
         let normalizedTitle = PinMatcher.normalizedTitle(match.window.title)
         let signature = PinMatcher.signature(for: match.window)
-        if reference.title != match.window.title
-          || reference.appName != match.window.appName
+        if reference.title != storedTitle
+          || reference.appName != storedAppName
           || reference.windowNumber != match.window.windowNumber
           || reference.lastKnownRuntimeID != match.window.id
           || reference.role != match.window.role
@@ -62,8 +64,8 @@ final class PinnedStore: ObservableObject {
           || reference.frame != match.window.frame
           || reference.signature != signature
         {
-          reference.title = match.window.title
-          reference.appName = match.window.appName
+          reference.title = storedTitle
+          reference.appName = storedAppName
           reference.windowNumber = match.window.windowNumber
           reference.lastKnownRuntimeID = match.window.id
           reference.role = match.window.role
@@ -112,8 +114,8 @@ final class PinnedStore: ObservableObject {
       PinnedWindowReference(
         id: UUID(),
         bundleID: window.bundleID,
-        appName: window.appName,
-        title: window.title,
+        appName: canonicalStoredAppName(for: window),
+        title: canonicalStoredTitle(for: window),
         windowNumber: window.windowNumber,
         lastKnownRuntimeID: window.id,
         role: window.role,
@@ -190,6 +192,23 @@ final class PinnedStore: ObservableObject {
     references = refs
     save()
     reconcile(with: lastSeenWindows)
+  }
+
+  // Stores a non-empty title so missing pins keep a stable readable name.
+  private func canonicalStoredTitle(for window: WindowSnapshot) -> String {
+    let trimmedTitle = window.title.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmedTitle.isEmpty ? "Untitled Window" : trimmedTitle
+  }
+
+  // Stores a non-empty app name so missing pins still show identifiable source apps.
+  private func canonicalStoredAppName(for window: WindowSnapshot) -> String {
+    let trimmedAppName = window.appName.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmedAppName.isEmpty {
+      return trimmedAppName
+    }
+
+    let trimmedBundleID = window.bundleID.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmedBundleID.isEmpty ? "Unknown App" : trimmedBundleID
   }
 
   // Finds an existing pin id for a live window using strict identities first.

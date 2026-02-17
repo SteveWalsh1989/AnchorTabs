@@ -152,12 +152,6 @@ struct WindowManagerPopoverView: View {
         checkboxControl(isOn: $model.highlightMissingPins)
       }
       settingRow(
-        title: "Hide missing pinned windows",
-        description: "Hides missing tabs from the strip."
-      ) {
-        checkboxControl(isOn: $model.hideMissingPins)
-      }
-      settingRow(
         title: "Highlight focused window",
         description: "Purple underline for active tab."
       ) {
