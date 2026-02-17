@@ -131,6 +131,68 @@ final class PinnedStoreTests: XCTestCase {
     XCTAssertEqual(result?.method, .signature)
   }
 
+  func testWindowStoreFallbackRuntimeIDFingerprintNormalizesTitle() {
+    let snapshotA = makeWindow(
+      id: "",
+      pid: 901,
+      bundleID: "com.example.browser",
+      appName: "Browser",
+      title: "  Sprint Plan  ",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 10, y: 10, width: 1200, height: 760)
+    )
+    let snapshotB = makeWindow(
+      id: "",
+      pid: 901,
+      bundleID: "com.example.browser",
+      appName: "Browser",
+      title: "sprint plan",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 10, y: 10, width: 1200, height: 760)
+    )
+
+    XCTAssertEqual(
+      WindowStore.fallbackRuntimeIDFingerprint(for: snapshotA),
+      WindowStore.fallbackRuntimeIDFingerprint(for: snapshotB)
+    )
+  }
+
+  func testWindowStoreFallbackRuntimeIDIsDeterministicAndOccurrenceSensitive() {
+    let snapshot = makeWindow(
+      id: "",
+      pid: 777,
+      bundleID: "com.example.editor",
+      appName: "Editor",
+      title: "Release Notes",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 120, y: 80, width: 1180, height: 740)
+    )
+
+    let fingerprint = WindowStore.fallbackRuntimeIDFingerprint(for: snapshot)
+    let firstID = WindowStore.fallbackRuntimeID(pid: snapshot.pid, fingerprint: fingerprint, occurrence: 0)
+    let firstIDAgain = WindowStore.fallbackRuntimeID(
+      pid: snapshot.pid,
+      fingerprint: fingerprint,
+      occurrence: 0
+    )
+    let secondID = WindowStore.fallbackRuntimeID(
+      pid: snapshot.pid,
+      fingerprint: fingerprint,
+      occurrence: 1
+    )
+
+    XCTAssertEqual(firstID, firstIDAgain)
+    XCTAssertNotEqual(firstID, secondID)
+    XCTAssertTrue(firstID.hasPrefix("\(snapshot.pid)-fallback-"))
+    XCTAssertTrue(secondID.hasSuffix("-1"))
+  }
+
   @MainActor
   func testPinnedStorePersistsRenameAcrossReload() {
     let suiteName = "PinnedStoreTests.\(UUID().uuidString)"

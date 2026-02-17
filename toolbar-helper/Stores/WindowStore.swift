@@ -185,15 +185,15 @@ final class WindowStore: ObservableObject {
 
         let resolvedSnapshot: WindowSnapshot
         if snapshot.id.isEmpty {
-          let fingerprint = fallbackRuntimeIDFingerprint(for: snapshot)
+          let fingerprint = Self.fallbackRuntimeIDFingerprint(for: snapshot)
           let occurrence = fallbackOccurrenceByFingerprint[fingerprint, default: 0]
           fallbackOccurrenceByFingerprint[fingerprint] = occurrence + 1
-          let runtimeID = fallbackRuntimeID(
+          let runtimeID = Self.fallbackRuntimeID(
             pid: app.processIdentifier,
             fingerprint: fingerprint,
             occurrence: occurrence
           )
-          resolvedSnapshot = snapshotWithRuntimeID(snapshot, runtimeID: runtimeID)
+          resolvedSnapshot = Self.snapshotWithRuntimeID(snapshot, runtimeID: runtimeID)
         } else {
           resolvedSnapshot = snapshot
         }
@@ -423,7 +423,9 @@ final class WindowStore: ObservableObject {
   }
 
   // Replaces an unresolved runtime id after deterministic fallback computation.
-  private func snapshotWithRuntimeID(_ snapshot: WindowSnapshot, runtimeID: String) -> WindowSnapshot {
+  private static func snapshotWithRuntimeID(_ snapshot: WindowSnapshot, runtimeID: String)
+    -> WindowSnapshot
+  {
     WindowSnapshot(
       id: runtimeID,
       pid: snapshot.pid,
@@ -439,7 +441,7 @@ final class WindowStore: ObservableObject {
   }
 
   // Creates stable fallback identity input from role/title/frame details.
-  private func fallbackRuntimeIDFingerprint(for snapshot: WindowSnapshot) -> String {
+  static func fallbackRuntimeIDFingerprint(for snapshot: WindowSnapshot) -> String {
     let normalizedTitle = snapshot.title.normalizedForMatching()
     let frameText: String
     if let frame = snapshot.frame {
@@ -451,13 +453,13 @@ final class WindowStore: ObservableObject {
   }
 
   // Builds deterministic runtime id for windows missing AXWindowNumber.
-  private func fallbackRuntimeID(pid: pid_t, fingerprint: String, occurrence: Int) -> String {
+  static func fallbackRuntimeID(pid: pid_t, fingerprint: String, occurrence: Int) -> String {
     let digest = stableShortDigest(fingerprint)
     return "\(pid)-fallback-\(digest)-\(occurrence)"
   }
 
   // Produces a short stable hash to keep fallback ids compact.
-  private func stableShortDigest(_ value: String) -> String {
+  private static func stableShortDigest(_ value: String) -> String {
     let digest = SHA256.hash(data: Data(value.utf8))
     return digest.prefix(8).map { String(format: "%02x", $0) }.joined()
   }
