@@ -7,7 +7,15 @@ struct WindowManagerPopoverView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      if isShowingLayoutSettings {
+      if !model.isAccessibilityTrusted {
+        HStack {
+          Spacer()
+          settingsToggleButton
+        }
+        .font(.system(size: 12))
+
+        accessibilityPermissionSection
+      } else if isShowingLayoutSettings {
         HStack {
           Spacer()
           hidePinnedItemsButton
@@ -104,25 +112,30 @@ struct WindowManagerPopoverView: View {
   }
 
   // Guidance shown when Accessibility permission is currently unavailable.
-  private var accessibilityWarning: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack(alignment: .top, spacing: 6) {
+  private var accessibilityPermissionSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(alignment: .top, spacing: 8) {
         Image(systemName: "exclamationmark.triangle.fill")
           .foregroundStyle(.orange)
         Text("Accessibility access is required to list and focus windows.")
-          .font(.caption)
+          .font(.system(size: 12, weight: .semibold))
           .foregroundStyle(.secondary)
       }
 
-      Button("Open Accessibility Settings…") {
+      Button {
         model.openAccessibilitySettings()
+      } label: {
+        Text("Open Accessibility Settings…")
+          .font(.system(size: 13, weight: .semibold))
+          .frame(maxWidth: .infinity)
       }
-      .font(.caption)
+      .buttonStyle(.borderedProminent)
+      .controlSize(.large)
     }
-    .padding(8)
+    .padding(12)
     .background(
       RoundedRectangle(cornerRadius: 8)
-        .fill(Color.orange.opacity(0.1))
+        .fill(Color.orange.opacity(0.14))
     )
   }
 
@@ -218,10 +231,6 @@ struct WindowManagerPopoverView: View {
       Text("Click a window name to focus it. Use the pin icon to keep it in your strip.")
         .font(.caption)
         .foregroundStyle(.secondary)
-
-      if !model.isAccessibilityTrusted {
-        accessibilityWarning
-      }
 
       if orderedWindows.isEmpty {
         Text("No eligible windows found")
