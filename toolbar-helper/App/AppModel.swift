@@ -11,6 +11,7 @@ final class AppModel: ObservableObject {
   private static let menuTrailingSpacingKey = "MenuStripTrailingSpacing.v2"
   private static let menuPinnedItemMinWidthKey = "MenuStripPinnedItemMinWidth.v2"
   private static let highlightFocusedWindowKey = "HighlightFocusedWindow.v1"
+  private static let hidePinnedItemsInMenuBarKey = "HidePinnedItemsInMenuBar.v1"
 
   @Published private(set) var windows: [WindowSnapshot] = []
   @Published private(set) var pinnedItems: [PinnedWindowItem] = []
@@ -19,6 +20,7 @@ final class AppModel: ObservableObject {
   @Published private(set) var windowDiagnostics = WindowStoreDiagnostics.empty
   @Published private(set) var pinnedDiagnostics = PinnedStoreDiagnostics.empty
   @Published private(set) var focusedWindowRuntimeID: String?
+  @Published private(set) var hidesPinnedItemsInMenuBar = false
 
   // Controls whether the currently focused pinned window gets a highlight marker.
   @Published var highlightFocusedWindow = true {
@@ -46,6 +48,7 @@ final class AppModel: ObservableObject {
   private let userDefaults: UserDefaults
   private let iconCache = NSCache<NSString, NSImage>()
   private var cancellables: Set<AnyCancellable> = []
+  private var isWindowManagerVisible = false
 
   // Injects dependencies for testing and previews.
   init(
@@ -82,6 +85,11 @@ final class AppModel: ObservableObject {
     } else {
       highlightFocusedWindow = userDefaults.bool(forKey: Self.highlightFocusedWindowKey)
     }
+    if userDefaults.object(forKey: Self.hidePinnedItemsInMenuBarKey) == nil {
+      hidesPinnedItemsInMenuBar = false
+    } else {
+      hidesPinnedItemsInMenuBar = userDefaults.bool(forKey: Self.hidePinnedItemsInMenuBarKey)
+    }
     windowStore = WindowStore(permissionManager: permissionManager)
     bindStores()
   }
@@ -109,6 +117,7 @@ final class AppModel: ObservableObject {
   func start() {
     permissionManager.refreshStatus()
     windowStore.startPolling()
+    updateWindowRefreshPolicy()
   }
 
   // Stops background polling and observer work.
@@ -131,13 +140,23 @@ final class AppModel: ObservableObject {
     windowStore.refreshNow(reason: .manual)
   }
 
-  // Pauses auto-refresh while the popover is visible to avoid UI flicker.
+  // Tracks popover visibility and reapplies the shared refresh policy.
   func setWindowManagerVisibility(_ isVisible: Bool) {
-    if isVisible {
-      windowStore.pauseAutomaticRefreshing()
-    } else {
-      windowStore.resumeAutomaticRefreshing()
-    }
+    isWindowManagerVisible = isVisible
+    updateWindowRefreshPolicy()
+  }
+
+  // Hides or shows pinned tabs in the menu bar strip while keeping the gear button visible.
+  func setPinnedItemsHiddenInMenuBar(_ isHidden: Bool) {
+    guard hidesPinnedItemsInMenuBar != isHidden else { return }
+    hidesPinnedItemsInMenuBar = isHidden
+    userDefaults.set(isHidden, forKey: Self.hidePinnedItemsInMenuBarKey)
+    updateWindowRefreshPolicy()
+  }
+
+  // Toggles pinned tab visibility in the menu bar strip.
+  func togglePinnedItemsHiddenInMenuBar() {
+    setPinnedItemsHiddenInMenuBar(!hidesPinnedItemsInMenuBar)
   }
 
   // Rebuilds the AX session without clearing persisted pins.
@@ -145,6 +164,7 @@ final class AppModel: ObservableObject {
     permissionManager.refreshStatus()
     windowStore.stopPolling()
     windowStore.startPolling()
+    updateWindowRefreshPolicy()
   }
 
   // Resets layout/highlight preferences to product defaults.
@@ -354,6 +374,15 @@ final class AppModel: ObservableObject {
         self?.maxVisiblePinnedTabs = maxVisiblePinnedTabs
       }
       .store(in: &cancellables)
+  }
+
+  // Applies the shared refresh policy for popover visibility and hidden-strip mode.
+  private func updateWindowRefreshPolicy() {
+    if isWindowManagerVisible || hidesPinnedItemsInMenuBar {
+      windowStore.pauseAutomaticRefreshing()
+    } else {
+      windowStore.resumeAutomaticRefreshing()
+    }
   }
 
 }

@@ -10,6 +10,7 @@ struct WindowManagerPopoverView: View {
       if isShowingLayoutSettings {
         HStack {
           Spacer()
+          hidePinnedItemsButton
           refreshButton
           settingsToggleButton
         }
@@ -23,6 +24,7 @@ struct WindowManagerPopoverView: View {
             .lineLimit(1)
             .truncationMode(.tail)
           Spacer()
+          hidePinnedItemsButton
           refreshButton
           settingsToggleButton
         }
@@ -53,6 +55,20 @@ struct WindowManagerPopoverView: View {
     }
     .buttonStyle(.plain)
     .help("Refresh open windows")
+  }
+
+  private var hidePinnedItemsButton: some View {
+    Button {
+      model.togglePinnedItemsHiddenInMenuBar()
+    } label: {
+      Image(systemName: model.hidesPinnedItemsInMenuBar ? "eye" : "eye.slash")
+    }
+    .buttonStyle(.plain)
+    .help(
+      model.hidesPinnedItemsInMenuBar
+        ? "Show pinned items in menu bar"
+        : "Hide pinned items in menu bar"
+    )
   }
 
   // Returns windows with currently pinned items first, preserving pin order.

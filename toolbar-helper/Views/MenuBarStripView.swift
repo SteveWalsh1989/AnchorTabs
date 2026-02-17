@@ -5,76 +5,82 @@ struct MenuBarStripView: View {
   @ObservedObject var model: AppModel
   @State private var isShowingWindowManager = false
 
+  private var shouldShowPinnedItems: Bool {
+    model.isAccessibilityTrusted && !model.hidesPinnedItemsInMenuBar
+  }
+
   private var effectiveTrailingSpacing: Double {
-    model.isAccessibilityTrusted ? model.menuTrailingSpacing : 0
+    shouldShowPinnedItems ? model.menuTrailingSpacing : 0
   }
 
   // Renders pinned tabs plus one consolidated settings/menu button.
   var body: some View {
     HStack(spacing: 6) {
-      if model.isAccessibilityTrusted {
-        if model.visiblePinnedItems.isEmpty {
-          Text("No Pins")
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(.secondary)
-        } else {
-          ForEach(model.visiblePinnedItems, id: \.id) { pinnedItem in
-            pinnedTabButton(for: pinnedItem)
+      if !model.hidesPinnedItemsInMenuBar {
+        if model.isAccessibilityTrusted {
+          if model.visiblePinnedItems.isEmpty {
+            Text("No Pins")
+              .font(.system(size: 11, weight: .medium))
+              .foregroundStyle(.secondary)
+          } else {
+            ForEach(model.visiblePinnedItems, id: \.id) { pinnedItem in
+              pinnedTabButton(for: pinnedItem)
+            }
+
+            Color.clear
+              .frame(width: 8, height: 18)
+              .contentShape(Rectangle())
+              .dropDestination(for: String.self) { items, _ in
+                guard let draggedID = draggedPinID(from: items) else { return false }
+                return reorderPinnedItem(draggedID: draggedID, beforeIndex: nil)
+              }
+              .help("Drop to move tab to the end")
           }
 
-          Color.clear
-            .frame(width: 8, height: 18)
-            .contentShape(Rectangle())
-            .dropDestination(for: String.self) { items, _ in
-              guard let draggedID = draggedPinID(from: items) else { return false }
-              return reorderPinnedItem(draggedID: draggedID, beforeIndex: nil)
-            }
-            .help("Drop to move tab to the end")
-        }
+          if !model.overflowPinnedItems.isEmpty {
+            Menu {
+              ForEach(model.overflowPinnedItems, id: \.id) { pinnedItem in
+                Menu(pinnedItem.tabLabel) {
+                  Button("Focus Window") {
+                    model.activatePinnedItem(pinnedItem)
+                  }
+                  .disabled(pinnedItem.isMissing)
 
-        if !model.overflowPinnedItems.isEmpty {
-          Menu {
-            ForEach(model.overflowPinnedItems, id: \.id) { pinnedItem in
-              Menu(pinnedItem.tabLabel) {
-                Button("Focus Window") {
-                  model.activatePinnedItem(pinnedItem)
-                }
-                .disabled(pinnedItem.isMissing)
+                  Button {
+                    model.promptRename(for: pinnedItem)
+                  } label: {
+                    Label("Rename…", systemImage: "pencil")
+                  }
 
-                Button {
-                  model.promptRename(for: pinnedItem)
-                } label: {
-                  Label("Rename…", systemImage: "pencil")
-                }
+                  if pinnedItem.reference.customName?.isEmpty == false {
+                    Button("Reset Name") {
+                      model.renamePin(pinID: pinnedItem.id, customName: nil)
+                    }
+                  }
 
-                if pinnedItem.reference.customName?.isEmpty == false {
-                  Button("Reset Name") {
-                    model.renamePin(pinID: pinnedItem.id, customName: nil)
+                  Button("Unpin") {
+                    model.unpin(pinID: pinnedItem.id)
                   }
                 }
-
-                Button("Unpin") {
-                  model.unpin(pinID: pinnedItem.id)
-                }
               }
+            } label: {
+              Image(systemName: "ellipsis.circle")
             }
-          } label: {
-            Image(systemName: "ellipsis.circle")
+            .menuStyle(.borderlessButton)
+            .help("Overflow pinned windows")
           }
-          .menuStyle(.borderlessButton)
-          .help("Overflow pinned windows")
+        } else {
+          Button {
+            model.openAccessibilitySettings()
+          } label: {
+            Image(systemName: "exclamationmark.triangle.fill")
+              .foregroundStyle(.orange)
+          }
+          .buttonStyle(.plain)
+          .help(
+            "Accessibility access is required to enumerate and focus windows. Click to open Accessibility Settings."
+          )
         }
-      } else {
-        Button {
-          model.openAccessibilitySettings()
-        } label: {
-          Image(systemName: "exclamationmark.triangle.fill")
-            .foregroundStyle(.orange)
-        }
-        .buttonStyle(.plain)
-        .help(
-          "Accessibility access is required to enumerate and focus windows. Click to open Accessibility Settings."
-        )
       }
 
       if effectiveTrailingSpacing > 0 {
@@ -86,7 +92,7 @@ struct MenuBarStripView: View {
       Button {
         isShowingWindowManager.toggle()
       } label: {
-        Image(systemName: "gearshape.fill")
+        Image(systemName: "pin.fill")
       }
       .buttonStyle(.plain)
       .help("Open window manager")
