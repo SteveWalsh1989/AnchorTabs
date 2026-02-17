@@ -1,9 +1,17 @@
+import Combine
 import SwiftUI
 
 // Popover UI for browsing open windows and managing pin/rename actions.
 struct WindowManagerPopoverView: View {
   @ObservedObject var model: AppModel
   @State private var isShowingLayoutSettings = false
+  private let accessibilityStateRefreshTimer = Timer.publish(every: 1.0, on: .main, in: .common)
+    .autoconnect()
+  private let popoverWidth: CGFloat = 400
+  private let noAccessibilityPopoverHeight: CGFloat = 170
+  private let settingsPopoverHeight: CGFloat = 430
+  private let openWindowsRowsBeforeScroll = 8
+  private let openWindowsListMaxHeight: CGFloat = 430
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -42,7 +50,30 @@ struct WindowManagerPopoverView: View {
       }
     }
     .padding(12)
-    .frame(width: 400)
+    .frame(
+      width: popoverWidth,
+      height: explicitPopoverHeight,
+      alignment: .topLeading
+    )
+    .onReceive(accessibilityStateRefreshTimer) { _ in
+      guard !model.isAccessibilityTrusted else { return }
+      model.refreshWindowsNow()
+    }
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) {
+      _ in
+      guard !model.isAccessibilityTrusted else { return }
+      model.refreshWindowsNow()
+    }
+  }
+
+  private var explicitPopoverHeight: CGFloat? {
+    if !model.isAccessibilityTrusted {
+      return noAccessibilityPopoverHeight
+    }
+    if isShowingLayoutSettings {
+      return settingsPopoverHeight
+    }
+    return nil
   }
 
   private var settingsToggleButton: some View {
@@ -175,6 +206,12 @@ struct WindowManagerPopoverView: View {
         )
       }
       settingRow(
+        title: "Highlight missing pinned windows",
+        description: "Red underline when missing."
+      ) {
+        checkboxControl(isOn: $model.highlightMissingPins)
+      }
+      settingRow(
         title: "Highlight focused window",
         description: "Purple underline for active tab."
       ) {
@@ -237,7 +274,25 @@ struct WindowManagerPopoverView: View {
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
           .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.vertical, 12)
+      } else if orderedWindows.count <= openWindowsRowsBeforeScroll {
+        LazyVStack(spacing: 4) {
+          ForEach(orderedWindows) { window in
+            let isPinned = model.isPinned(window: window)
+            let rowLabel = displayLabel(for: window)
+            WindowManagerWindowRow(
+              displayLabel: rowLabel,
+              nameTooltip: rowLabel,
+              renameInfoTooltip: renamedWindowTooltip(for: window),
+              isPinned: isPinned,
+              onFocus: { model.activateWindow(window) },
+              onTogglePin: { model.togglePin(for: window) },
+              onRename: {
+                guard let pinnedItem = model.pinnedItem(for: window) else { return }
+                model.promptRename(for: pinnedItem)
+              }
+            )
+          }
+        }
       } else {
         ScrollView {
           LazyVStack(spacing: 4) {
@@ -259,7 +314,7 @@ struct WindowManagerPopoverView: View {
             }
           }
         }
-        .frame(maxHeight: 300)
+        .frame(maxHeight: openWindowsListMaxHeight)
       }
     }
   }

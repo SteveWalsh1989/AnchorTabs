@@ -5,6 +5,10 @@ struct MenuBarStripView: View {
   @ObservedObject var model: AppModel
   @State private var isShowingWindowManager = false
 
+  private var isLauncherOnlyMode: Bool {
+    model.hidesPinnedItemsInMenuBar
+  }
+
   private var shouldShowPinnedItems: Bool {
     model.isAccessibilityTrusted && !model.hidesPinnedItemsInMenuBar
   }
@@ -15,7 +19,7 @@ struct MenuBarStripView: View {
 
   // Renders pinned tabs plus one consolidated settings/menu button.
   var body: some View {
-    HStack(spacing: 6) {
+    HStack(spacing: isLauncherOnlyMode ? 0 : 6) {
       if !model.hidesPinnedItemsInMenuBar {
         if model.isAccessibilityTrusted {
           if model.visiblePinnedItems.isEmpty {
@@ -111,9 +115,9 @@ struct MenuBarStripView: View {
       model.setWindowManagerVisibility(false)
     }
     .frame(maxWidth: .infinity, alignment: .trailing)
-    .padding(.horizontal, 6)
-    .padding(.vertical, 2)
-    .frame(minHeight: 24)
+    .padding(.horizontal, isLauncherOnlyMode ? 0 : 6)
+    .padding(.vertical, isLauncherOnlyMode ? 0 : 2)
+    .frame(minHeight: isLauncherOnlyMode ? 0 : 24)
     .transaction { transaction in
       transaction.animation = nil
     }
@@ -142,6 +146,7 @@ struct MenuBarStripView: View {
         TabButtonStyle(
           tabKind,
           minWidth: model.menuPinnedItemMinWidth,
+          showsMissingUnderline: model.highlightMissingPins,
           showsFocusedUnderline: model.highlightFocusedWindow
         )
       )
@@ -224,16 +229,19 @@ private struct TabButtonStyle: ButtonStyle {
 
   let kind: Kind
   let minWidth: Double
+  let showsMissingUnderline: Bool
   let showsFocusedUnderline: Bool
   private static let focusedUnderlineColor = Color(red: 0.69, green: 0.56, blue: 0.94)
 
   init(
     _ kind: Kind,
     minWidth: Double = 0,
+    showsMissingUnderline: Bool = true,
     showsFocusedUnderline: Bool = true
   ) {
     self.kind = kind
     self.minWidth = minWidth
+    self.showsMissingUnderline = showsMissingUnderline
     self.showsFocusedUnderline = showsFocusedUnderline
   }
 
@@ -250,7 +258,7 @@ private struct TabButtonStyle: ButtonStyle {
       )
       .foregroundStyle(foregroundColor)
       .overlay(alignment: .bottom) {
-        if kind == .missing {
+        if kind == .missing && showsMissingUnderline {
           Rectangle()
             .fill(Color.red.opacity(0.85))
             .frame(height: 1)

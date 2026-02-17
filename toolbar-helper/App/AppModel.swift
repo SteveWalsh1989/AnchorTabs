@@ -10,6 +10,7 @@ final class AppModel: ObservableObject {
   private static let defaultMenuTrailingSpacing = 0.0
   private static let menuTrailingSpacingKey = "MenuStripTrailingSpacing.v2"
   private static let menuPinnedItemMinWidthKey = "MenuStripPinnedItemMinWidth.v2"
+  private static let highlightMissingPinsKey = "HighlightMissingPins.v1"
   private static let highlightFocusedWindowKey = "HighlightFocusedWindow.v1"
   private static let hidePinnedItemsInMenuBarKey = "HidePinnedItemsInMenuBar.v1"
 
@@ -22,6 +23,12 @@ final class AppModel: ObservableObject {
   @Published private(set) var focusedWindowRuntimeID: String?
   @Published private(set) var hidesPinnedItemsInMenuBar = false
 
+  // Controls whether missing pinned items are highlighted in red.
+  @Published var highlightMissingPins = true {
+    didSet {
+      userDefaults.set(highlightMissingPins, forKey: Self.highlightMissingPinsKey)
+    }
+  }
   // Controls whether the currently focused pinned window gets a highlight marker.
   @Published var highlightFocusedWindow = true {
     didSet {
@@ -80,6 +87,11 @@ final class AppModel: ObservableObject {
       ),
       Self.menuPinnedItemMinWidthRange.upperBound
     )
+    if userDefaults.object(forKey: Self.highlightMissingPinsKey) == nil {
+      highlightMissingPins = true
+    } else {
+      highlightMissingPins = userDefaults.bool(forKey: Self.highlightMissingPinsKey)
+    }
     if userDefaults.object(forKey: Self.highlightFocusedWindowKey) == nil {
       highlightFocusedWindow = true
     } else {
@@ -171,6 +183,7 @@ final class AppModel: ObservableObject {
   func resetMenuLayoutSettingsToDefaults() {
     menuTrailingSpacing = 0
     menuPinnedItemMinWidth = 0
+    highlightMissingPins = true
     highlightFocusedWindow = true
   }
 

@@ -8,10 +8,13 @@ final class StatusBarController {
   private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
   private let hostingView: NSHostingView<MenuBarStripView>
   private let minimumLength: CGFloat = 70
+  private let compactMinimumLength: CGFloat = 18
   private let lengthPadding: CGFloat = 10
+  private let compactLengthPadding: CGFloat = 0
   private let lengthChangeThreshold: CGFloat = 1
   private let lengthUpdateDebounceMs = 100
   private var lastAppliedLength: CGFloat?
+  private var isCompactMode = false
   private var cancellables: Set<AnyCancellable> = []
 
   // Creates the hosting view and binds status item sizing updates.
@@ -41,6 +44,16 @@ final class StatusBarController {
 
   // Listens for model changes so width can adapt to changing tab labels.
   private func observeModel(_ model: AppModel) {
+    model.$hidesPinnedItemsInMenuBar
+      .removeDuplicates()
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] isHidden in
+        guard let self else { return }
+        self.isCompactMode = isHidden
+        self.updateLengthIfNeeded()
+      }
+      .store(in: &cancellables)
+
     let visibleTabLabels = Publishers.CombineLatest(model.$pinnedItems, model.$maxVisiblePinnedTabs)
       .map { pinnedItems, maxVisiblePinnedTabs in
         Array(pinnedItems.prefix(maxVisiblePinnedTabs)).map(\.tabLabel)
@@ -53,6 +66,7 @@ final class StatusBarController {
       model.$menuTrailingSpacing.removeDuplicates(),
       model.$isAccessibilityTrusted.removeDuplicates()
     )
+      .combineLatest(model.$hidesPinnedItemsInMenuBar.removeDuplicates())
       .debounce(
         for: .milliseconds(lengthUpdateDebounceMs),
         scheduler: DispatchQueue.main
@@ -67,7 +81,7 @@ final class StatusBarController {
   private func updateLength() {
     hostingView.layoutSubtreeIfNeeded()
     let fittingWidth = hostingView.fittingSize.width
-    let desiredLength = max(minimumLength, fittingWidth + lengthPadding)
+    let desiredLength = max(effectiveMinimumLength, fittingWidth + effectiveLengthPadding)
     lastAppliedLength = desiredLength
     statusItem.length = desiredLength
   }
@@ -76,11 +90,19 @@ final class StatusBarController {
   private func updateLengthIfNeeded() {
     hostingView.layoutSubtreeIfNeeded()
     let fittingWidth = hostingView.fittingSize.width
-    let desiredLength = max(minimumLength, fittingWidth + lengthPadding)
+    let desiredLength = max(effectiveMinimumLength, fittingWidth + effectiveLengthPadding)
     if let lastAppliedLength, abs(lastAppliedLength - desiredLength) < lengthChangeThreshold {
       return
     }
     lastAppliedLength = desiredLength
     statusItem.length = desiredLength
+  }
+
+  private var effectiveMinimumLength: CGFloat {
+    isCompactMode ? compactMinimumLength : minimumLength
+  }
+
+  private var effectiveLengthPadding: CGFloat {
+    isCompactMode ? compactLengthPadding : lengthPadding
   }
 }
