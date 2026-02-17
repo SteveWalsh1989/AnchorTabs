@@ -25,8 +25,8 @@ final class WindowStore: ObservableObject {
 
   private let permissionManager: AccessibilityPermissionManager
   private let observerCapablePollingInterval: TimeInterval = 3.0
-  private let fallbackPollingInterval: TimeInterval = 1.2
-  private let observerRefreshDebounceInterval: TimeInterval = 0.2
+  private let fallbackPollingInterval: TimeInterval = 2.0
+  private let observerRefreshDebounceInterval: TimeInterval = 0.4
   private let observedAppNotifications: [CFString] = [
     kAXWindowCreatedNotification as CFString,
     kAXFocusedWindowChangedNotification as CFString,
@@ -69,7 +69,9 @@ final class WindowStore: ObservableObject {
     observerRefreshTimer?.invalidate()
     observerRefreshTimer = nil
     activePollingInterval = nil
-    focusedRuntimeID = nil
+    if focusedRuntimeID != nil {
+      focusedRuntimeID = nil
+    }
     stopObserverNotifications()
     removeAllAXObservers()
     publishDiagnostics()
@@ -80,8 +82,12 @@ final class WindowStore: ObservableObject {
     let refreshStartedAt = Date()
     permissionManager.refreshStatus()
     guard permissionManager.isTrusted else {
-      windows = []
-      focusedRuntimeID = nil
+      if !windows.isEmpty {
+        windows = []
+      }
+      if focusedRuntimeID != nil {
+        focusedRuntimeID = nil
+      }
       handlesByRuntimeID = [:]
       removeAllAXObservers()
       updatePollingTimerIfNeeded()
@@ -98,9 +104,14 @@ final class WindowStore: ObservableObject {
       }
       return $0.appName.localizedCaseInsensitiveCompare($1.appName) == .orderedAscending
     }
-    windows = sortedWindows
+    if windows != sortedWindows {
+      windows = sortedWindows
+    }
     handlesByRuntimeID = result.handlesByRuntimeID
-    focusedRuntimeID = resolveFocusedRuntimeID(in: sortedWindows)
+    let resolvedFocusedRuntimeID = resolveFocusedRuntimeID(in: sortedWindows)
+    if focusedRuntimeID != resolvedFocusedRuntimeID {
+      focusedRuntimeID = resolvedFocusedRuntimeID
+    }
     updatePollingTimerIfNeeded()
     recordRefresh(reason: reason, startedAt: refreshStartedAt)
   }

@@ -88,7 +88,9 @@ final class PinnedStore: ObservableObject {
       references = updatedReferences
       save()
     }
-    pinnedItems = newPinnedItems
+    if pinnedItems != newPinnedItems {
+      pinnedItems = newPinnedItems
+    }
     diagnostics = PinnedStoreDiagnostics(
       totalPins: updatedReferences.count,
       matchedPins: matchedPins,

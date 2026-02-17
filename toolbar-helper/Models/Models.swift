@@ -47,7 +47,7 @@ struct PinnedWindowReference: Identifiable, Codable, Hashable {
 }
 
 // View model that joins persisted pin data with the current window snapshot.
-struct PinnedWindowItem: Identifiable {
+struct PinnedWindowItem: Identifiable, Equatable {
   let id: UUID
   let reference: PinnedWindowReference
   let window: WindowSnapshot?

@@ -304,6 +304,7 @@ final class AppModel: ObservableObject {
   // Wires store publishers into top-level observable properties.
   private func bindStores() {
     permissionManager.$isTrusted
+      .removeDuplicates()
       .receive(on: DispatchQueue.main)
       .sink { [weak self] isTrusted in
         self?.isAccessibilityTrusted = isTrusted
@@ -311,6 +312,7 @@ final class AppModel: ObservableObject {
       .store(in: &cancellables)
 
     windowStore.$windows
+      .removeDuplicates()
       .receive(on: DispatchQueue.main)
       .sink { [weak self] windows in
         guard let self else { return }
@@ -327,6 +329,7 @@ final class AppModel: ObservableObject {
       .store(in: &cancellables)
 
     windowStore.$focusedRuntimeID
+      .removeDuplicates()
       .receive(on: DispatchQueue.main)
       .sink { [weak self] focusedRuntimeID in
         self?.focusedWindowRuntimeID = focusedRuntimeID
@@ -334,6 +337,7 @@ final class AppModel: ObservableObject {
       .store(in: &cancellables)
 
     pinnedStore.$pinnedItems
+      .removeDuplicates()
       .receive(on: DispatchQueue.main)
       .sink { [weak self] pinnedItems in
         self?.pinnedItems = pinnedItems
@@ -348,6 +352,7 @@ final class AppModel: ObservableObject {
       .store(in: &cancellables)
 
     pinnedStore.$maxVisiblePinnedTabs
+      .removeDuplicates()
       .receive(on: DispatchQueue.main)
       .sink { [weak self] maxVisiblePinnedTabs in
         self?.maxVisiblePinnedTabs = maxVisiblePinnedTabs

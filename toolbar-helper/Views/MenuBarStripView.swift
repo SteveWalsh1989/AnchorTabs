@@ -102,6 +102,9 @@ struct MenuBarStripView: View {
     .padding(.horizontal, 6)
     .padding(.vertical, 2)
     .frame(minHeight: 24)
+    .transaction { transaction in
+      transaction.animation = nil
+    }
   }
 
   // Tooltip text for pinned tabs, including missing-state guidance.
