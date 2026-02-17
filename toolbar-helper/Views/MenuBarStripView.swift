@@ -3,11 +3,8 @@ import SwiftUI
 // Main menu bar strip UI with pinned tabs and one consolidated management menu.
 struct MenuBarStripView: View {
   @ObservedObject var model: AppModel
-  @State private var isShowingWindowManager = false
-
-  private var isLauncherOnlyMode: Bool {
-    model.hidesPinnedItemsInMenuBar
-  }
+  private let launcherSectionWidth: CGFloat = 22
+  private let launcherSectionTrailingPadding: CGFloat = 6
 
   private var shouldShowPinnedItems: Bool {
     model.isAccessibilityTrusted && !model.hidesPinnedItemsInMenuBar
@@ -19,7 +16,23 @@ struct MenuBarStripView: View {
 
   // Renders pinned tabs plus one consolidated settings/menu button.
   var body: some View {
-    HStack(spacing: isLauncherOnlyMode ? 0 : 6) {
+    HStack(spacing: 0) {
+      pinnedItemsSection
+      launcherSection
+    }
+    .onDisappear {
+      model.setWindowManagerVisibility(false)
+    }
+    .frame(maxWidth: .infinity, alignment: .trailing)
+    .padding(.vertical, 2)
+    .frame(minHeight: 24)
+    .transaction { transaction in
+      transaction.animation = nil
+    }
+  }
+
+  private var pinnedItemsSection: some View {
+    HStack(spacing: 6) {
       if !model.hidesPinnedItemsInMenuBar {
         if model.isAccessibilityTrusted {
           if model.visiblePinnedItems.isEmpty {
@@ -85,42 +98,29 @@ struct MenuBarStripView: View {
             "Accessibility access is required to enumerate and focus windows. Click to open Accessibility Settings."
           )
         }
-      }
 
-      if effectiveTrailingSpacing > 0 {
-        Color.clear
-          .frame(width: effectiveTrailingSpacing, height: 1)
-          .allowsHitTesting(false)
+        if effectiveTrailingSpacing > 0 {
+          Color.clear
+            .frame(width: effectiveTrailingSpacing, height: 1)
+            .allowsHitTesting(false)
+        }
       }
-
-      Button {
-        isShowingWindowManager.toggle()
-      } label: {
-        Image(systemName: "pin.fill")
-      }
-      .buttonStyle(.plain)
-      .help("Open window manager")
-      .popover(
-        isPresented: $isShowingWindowManager,
-        attachmentAnchor: .rect(.bounds),
-        arrowEdge: .top
-      ) {
-        WindowManagerPopoverView(model: model)
-      }
-    }
-    .onChange(of: isShowingWindowManager) { _, isVisible in
-      model.setWindowManagerVisibility(isVisible)
-    }
-    .onDisappear {
-      model.setWindowManagerVisibility(false)
     }
     .frame(maxWidth: .infinity, alignment: .trailing)
-    .padding(.horizontal, isLauncherOnlyMode ? 0 : 6)
-    .padding(.vertical, isLauncherOnlyMode ? 0 : 2)
-    .frame(minHeight: isLauncherOnlyMode ? 0 : 24)
-    .transaction { transaction in
-      transaction.animation = nil
+    .padding(.leading, model.hidesPinnedItemsInMenuBar ? 0 : 6)
+  }
+
+  private var launcherSection: some View {
+    Button {
+      model.toggleWindowManagerVisibility()
+    } label: {
+      Image(systemName: "pin.fill")
     }
+    .buttonStyle(.plain)
+    .contentShape(Rectangle())
+    .help("Open window manager")
+    .frame(width: launcherSectionWidth, alignment: .center)
+    .padding(.trailing, launcherSectionTrailingPadding)
   }
 
   // Tooltip text for pinned tabs, including missing-state guidance.

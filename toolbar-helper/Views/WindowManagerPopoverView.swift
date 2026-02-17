@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import SwiftUI
 
@@ -260,6 +261,17 @@ struct WindowManagerPopoverView: View {
         }
         .font(.system(size: 12))
       }
+
+      Divider()
+
+      HStack {
+        Spacer()
+        Button("Quit AnchorTabs") {
+          NSApplication.shared.terminate(nil)
+        }
+        .font(.system(size: 11, weight: .semibold))
+      }
+      .font(.system(size: 12))
     }
   }
 

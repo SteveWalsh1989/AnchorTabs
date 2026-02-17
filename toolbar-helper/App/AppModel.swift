@@ -55,7 +55,7 @@ final class AppModel: ObservableObject {
   private let userDefaults: UserDefaults
   private let iconCache = NSCache<NSString, NSImage>()
   private var cancellables: Set<AnyCancellable> = []
-  private var isWindowManagerVisible = false
+  @Published private(set) var isWindowManagerVisible = false
 
   // Injects dependencies for testing and previews.
   init(
@@ -154,8 +154,14 @@ final class AppModel: ObservableObject {
 
   // Tracks popover visibility and reapplies the shared refresh policy.
   func setWindowManagerVisibility(_ isVisible: Bool) {
+    guard isWindowManagerVisible != isVisible else { return }
     isWindowManagerVisible = isVisible
     updateWindowRefreshPolicy()
+  }
+
+  // Toggles the window manager popover visibility.
+  func toggleWindowManagerVisibility() {
+    setWindowManagerVisibility(!isWindowManagerVisible)
   }
 
   // Hides or shows pinned tabs in the menu bar strip while keeping the gear button visible.

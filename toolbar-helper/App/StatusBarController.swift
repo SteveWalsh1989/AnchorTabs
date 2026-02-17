@@ -4,25 +4,40 @@ import SwiftUI
 
 // Hosts the SwiftUI strip inside an NSStatusItem and keeps width in sync.
 @MainActor
-final class StatusBarController {
+final class StatusBarController: NSObject, NSPopoverDelegate {
   private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
   private let hostingView: NSHostingView<MenuBarStripView>
+  private let model: AppModel
+  private let windowManagerPopover = NSPopover()
   private let minimumLength: CGFloat = 70
   private let compactMinimumLength: CGFloat = 18
   private let lengthPadding: CGFloat = 10
   private let compactLengthPadding: CGFloat = 0
+  private let launcherSectionWidth: CGFloat = 22
+  private let launcherSectionTrailingPadding: CGFloat = 6
   private let lengthChangeThreshold: CGFloat = 1
   private let lengthUpdateDebounceMs = 100
   private var lastAppliedLength: CGFloat?
   private var isCompactMode = false
+  private var isWindowManagerVisible = false
   private var cancellables: Set<AnyCancellable> = []
 
   // Creates the hosting view and binds status item sizing updates.
   init(model: AppModel) {
+    self.model = model
     hostingView = NSHostingView(rootView: MenuBarStripView(model: model))
+    super.init()
+    configureWindowManagerPopover()
     installHostView()
     observeModel(model)
     updateLength()
+  }
+
+  private func configureWindowManagerPopover() {
+    windowManagerPopover.behavior = .transient
+    windowManagerPopover.animates = false
+    windowManagerPopover.delegate = self
+    windowManagerPopover.contentSize = NSSize(width: 400, height: 430)
   }
 
   // Installs the SwiftUI host as the status bar button content view.
@@ -44,6 +59,23 @@ final class StatusBarController {
 
   // Listens for model changes so width can adapt to changing tab labels.
   private func observeModel(_ model: AppModel) {
+    model.$isWindowManagerVisible
+      .removeDuplicates()
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] isVisible in
+        guard let self else { return }
+        self.isWindowManagerVisible = isVisible
+        if isVisible {
+          self.showWindowManagerPopover()
+        } else {
+          self.hideWindowManagerPopover()
+        }
+        if !isVisible {
+          self.updateLengthIfNeeded()
+        }
+      }
+      .store(in: &cancellables)
+
     model.$hidesPinnedItemsInMenuBar
       .removeDuplicates()
       .receive(on: DispatchQueue.main)
@@ -104,5 +136,38 @@ final class StatusBarController {
 
   private var effectiveLengthPadding: CGFloat {
     isCompactMode ? compactLengthPadding : lengthPadding
+  }
+
+  private func showWindowManagerPopover() {
+    guard !windowManagerPopover.isShown else { return }
+    guard let button = statusItem.button else {
+      model.setWindowManagerVisibility(false)
+      return
+    }
+
+    windowManagerPopover.contentViewController = NSHostingController(
+      rootView: WindowManagerPopoverView(model: model)
+    )
+
+    let anchorCenterX = max(
+      button.bounds.minX + 1,
+      button.bounds.maxX - launcherSectionTrailingPadding - (launcherSectionWidth / 2)
+    )
+    let anchorRect = NSRect(
+      x: anchorCenterX,
+      y: button.bounds.minY,
+      width: 1,
+      height: button.bounds.height
+    )
+    windowManagerPopover.show(relativeTo: anchorRect, of: button, preferredEdge: .minY)
+  }
+
+  private func hideWindowManagerPopover() {
+    guard windowManagerPopover.isShown else { return }
+    windowManagerPopover.performClose(nil)
+  }
+
+  func popoverDidClose(_ notification: Notification) {
+    model.setWindowManagerVisibility(false)
   }
 }
