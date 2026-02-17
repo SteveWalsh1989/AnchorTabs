@@ -10,6 +10,7 @@ struct WindowManagerPopoverView: View {
       if isShowingLayoutSettings {
         HStack {
           Spacer()
+          refreshButton
           settingsToggleButton
         }
         .font(.system(size: 12))
@@ -22,6 +23,7 @@ struct WindowManagerPopoverView: View {
             .lineLimit(1)
             .truncationMode(.tail)
           Spacer()
+          refreshButton
           settingsToggleButton
         }
         .font(.system(size: 12))
@@ -41,6 +43,16 @@ struct WindowManagerPopoverView: View {
     }
     .buttonStyle(.plain)
     .help(isShowingLayoutSettings ? "Hide settings" : "Show settings")
+  }
+
+  private var refreshButton: some View {
+    Button {
+      model.refreshWindowsNow()
+    } label: {
+      Image(systemName: "arrow.clockwise")
+    }
+    .buttonStyle(.plain)
+    .help("Refresh open windows")
   }
 
   // Returns windows with currently pinned items first, preserving pin order.

@@ -84,14 +84,6 @@ struct MenuBarStripView: View {
       }
 
       Button {
-        model.refreshWindowsNow()
-      } label: {
-        Image(systemName: "arrow.clockwise")
-      }
-      .buttonStyle(.plain)
-      .help("Refresh open windows")
-
-      Button {
         isShowingWindowManager.toggle()
       } label: {
         Image(systemName: "gearshape.fill")
