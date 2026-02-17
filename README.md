@@ -1,10 +1,22 @@
 # AnchorTabs (macOS)
 
-AnchorTabs is a macOS menu bar app for pinning and restoring specific windows (not just apps) using Accessibility APIs.
+AnchorTabs is a macOS menu bar app for pinning and restoring specific windows to allow to quickly bring a window to the front. 
 
-It runs as an `NSStatusItem` app (`LSUIElement`), supports multiple windows from the same app, and lets you jump back to exact windows with one click.
+
+### Pinned items
+<img width="1165" height="33" alt="image" src="https://github.com/user-attachments/assets/0dac62cb-fc59-41fd-9025-d0dc05541cf3" />
+
+
+### Settings control
+
+<img width="406" height="276" alt="image" src="https://github.com/user-attachments/assets/b7aa6ed0-bcad-4de3-8579-870e27e48408" />
+
+
+
 
 ## Current Features
+It runs as an `NSStatusItem` app (`LSUIElement`), supports multiple windows from the same app, and lets you jump back to exact windows with one click.
+
 
 - Menu bar app with no Dock presence.
 - Per-window pinning with support for multiple windows from the same app.
