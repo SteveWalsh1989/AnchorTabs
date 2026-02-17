@@ -85,6 +85,51 @@ final class PinnedStoreTests: XCTestCase {
     XCTAssertEqual(result?.method, .signature)
   }
 
+  func testPinMatcherSignatureCollisionPrefersClosestFrame() {
+    let reference = makeReference(
+      bundleID: "com.example.cursor",
+      title: "Workspace",
+      windowNumber: nil,
+      runtimeID: "1000-stale",
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 100, y: 100, width: 1200, height: 760)
+    )
+
+    let expectedWindow = makeWindow(
+      id: "1000-a",
+      pid: 1000,
+      bundleID: "com.example.cursor",
+      appName: "Cursor",
+      title: "Workspace",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 100, y: 100, width: 1200, height: 760)
+    )
+
+    let otherWindow = makeWindow(
+      id: "1000-b",
+      pid: 1000,
+      bundleID: "com.example.cursor",
+      appName: "Cursor",
+      title: "Workspace",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 130, y: 130, width: 1200, height: 760)
+    )
+
+    let result = PinMatcher.findBestMatch(
+      for: reference,
+      in: [otherWindow, expectedWindow],
+      consumedWindowIDs: []
+    )
+
+    XCTAssertEqual(result?.window.id, expectedWindow.id)
+    XCTAssertEqual(result?.method, .signature)
+  }
+
   @MainActor
   func testPinnedStorePersistsRenameAcrossReload() {
     let suiteName = "PinnedStoreTests.\(UUID().uuidString)"
@@ -158,6 +203,81 @@ final class PinnedStoreTests: XCTestCase {
     XCTAssertEqual(store.diagnostics.missingPins, 1)
     defaults.removePersistentDomain(forName: suiteName)
   }
+
+  @MainActor
+  func testPinnedStoreKeepsAssignmentsStableWhenWindowOrderChanges() throws {
+    let suiteName = "PinnedStoreTests.\(UUID().uuidString)"
+    guard let defaults = UserDefaults(suiteName: suiteName) else {
+      XCTFail("Unable to create test defaults suite")
+      return
+    }
+    defaults.removePersistentDomain(forName: suiteName)
+
+    let firstPinID = UUID()
+    let secondPinID = UUID()
+
+    let firstReference = makeReference(
+      id: firstPinID,
+      bundleID: "com.example.cursor",
+      title: "Workspace",
+      windowNumber: nil,
+      runtimeID: "stale-1",
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 100, y: 100, width: 1200, height: 760)
+    )
+    let secondReference = makeReference(
+      id: secondPinID,
+      bundleID: "com.example.cursor",
+      title: "Workspace",
+      windowNumber: nil,
+      runtimeID: "stale-2",
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 130, y: 130, width: 1200, height: 760)
+    )
+
+    let serializedReferences = try JSONEncoder().encode([firstReference, secondReference])
+    defaults.set(serializedReferences, forKey: "PinnedWindows.v1")
+
+    let firstWindow = makeWindow(
+      id: "500-1",
+      pid: 500,
+      bundleID: "com.example.cursor",
+      appName: "Cursor",
+      title: "Workspace",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 100, y: 100, width: 1200, height: 760)
+    )
+    let secondWindow = makeWindow(
+      id: "500-2",
+      pid: 500,
+      bundleID: "com.example.cursor",
+      appName: "Cursor",
+      title: "Workspace",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 130, y: 130, width: 1200, height: 760)
+    )
+
+    let store = PinnedStore(userDefaults: defaults)
+    store.reconcile(with: [secondWindow, firstWindow])
+    let firstMatchBefore = store.pinnedItems.first(where: { $0.id == firstPinID })?.window?.id
+    let secondMatchBefore = store.pinnedItems.first(where: { $0.id == secondPinID })?.window?.id
+
+    store.reconcile(with: [firstWindow, secondWindow])
+    let firstMatchAfter = store.pinnedItems.first(where: { $0.id == firstPinID })?.window?.id
+    let secondMatchAfter = store.pinnedItems.first(where: { $0.id == secondPinID })?.window?.id
+
+    XCTAssertEqual(firstMatchBefore, firstWindow.id)
+    XCTAssertEqual(secondMatchBefore, secondWindow.id)
+    XCTAssertEqual(firstMatchAfter, firstWindow.id)
+    XCTAssertEqual(secondMatchAfter, secondWindow.id)
+    defaults.removePersistentDomain(forName: suiteName)
+  }
 }
 
 private func makeWindow(
@@ -186,6 +306,7 @@ private func makeWindow(
 }
 
 private func makeReference(
+  id: UUID = UUID(),
   bundleID: String,
   title: String,
   windowNumber: Int?,
@@ -195,7 +316,7 @@ private func makeReference(
   frame: WindowFrame?
 ) -> PinnedWindowReference {
   PinnedWindowReference(
-    id: UUID(),
+    id: id,
     bundleID: bundleID,
     appName: "App",
     title: title,

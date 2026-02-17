@@ -143,6 +143,15 @@ final class AppModel: ObservableObject {
     windowStore.refreshNow(reason: .manual)
   }
 
+  // Pauses auto-refresh while the popover is visible to avoid UI flicker.
+  func setWindowManagerVisibility(_ isVisible: Bool) {
+    if isVisible {
+      windowStore.pauseAutomaticRefreshing()
+    } else {
+      windowStore.resumeAutomaticRefreshing()
+    }
+  }
+
   // Rebuilds the AX session without clearing persisted pins.
   func resetAccessibilitySession() {
     permissionManager.refreshStatus()

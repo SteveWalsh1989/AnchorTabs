@@ -43,6 +43,7 @@ final class WindowStore: ObservableObject {
   private var observerRegistrationsByPID: [pid_t: AXObserverRegistration] = [:]
   private var notificationCancellables: Set<AnyCancellable> = []
   private var didStartObservers = false
+  private var isAutomaticRefreshingPaused = false
   private var refreshCount = 0
   private var observerEventCount = 0
   private var lastRefreshAt: Date?
@@ -64,6 +65,7 @@ final class WindowStore: ObservableObject {
 
   // Stops all timers and observer run-loop registrations.
   func stopPolling() {
+    isAutomaticRefreshingPaused = false
     timer?.invalidate()
     timer = nil
     observerRefreshTimer?.invalidate()
@@ -75,6 +77,25 @@ final class WindowStore: ObservableObject {
     stopObserverNotifications()
     removeAllAXObservers()
     publishDiagnostics()
+  }
+
+  // Suspends automatic polling/observer refresh while allowing manual refreshes.
+  func pauseAutomaticRefreshing() {
+    guard !isAutomaticRefreshingPaused else { return }
+    isAutomaticRefreshingPaused = true
+    timer?.invalidate()
+    timer = nil
+    observerRefreshTimer?.invalidate()
+    observerRefreshTimer = nil
+    activePollingInterval = nil
+    publishDiagnostics()
+  }
+
+  // Re-enables automatic refresh flow and performs one immediate sync.
+  func resumeAutomaticRefreshing() {
+    guard isAutomaticRefreshingPaused else { return }
+    isAutomaticRefreshingPaused = false
+    refreshNow(reason: .manual)
   }
 
   // Refreshes open windows and updates diagnostics for the given trigger.
@@ -204,6 +225,7 @@ final class WindowStore: ObservableObject {
       .receive(on: DispatchQueue.main)
       .sink { [weak self] _ in
         guard let self else { return }
+        guard !self.isAutomaticRefreshingPaused else { return }
         Task { @MainActor in
           self.refreshNow(reason: .workspaceLifecycle)
         }
@@ -223,6 +245,7 @@ final class WindowStore: ObservableObject {
   // Debounces observer bursts before triggering a refresh pass.
   private func scheduleObserverRefresh() {
     guard permissionManager.isTrusted else { return }
+    guard !isAutomaticRefreshingPaused else { return }
     observerEventCount += 1
     observerRefreshTimer?.invalidate()
     observerRefreshTimer = Timer.scheduledTimer(
@@ -248,6 +271,14 @@ final class WindowStore: ObservableObject {
 
   // Rebuilds the polling timer when the desired interval changes.
   private func updatePollingTimerIfNeeded() {
+    if isAutomaticRefreshingPaused {
+      timer?.invalidate()
+      timer = nil
+      activePollingInterval = nil
+      publishDiagnostics()
+      return
+    }
+
     let desiredInterval = desiredPollingInterval()
     if let activePollingInterval, abs(activePollingInterval - desiredInterval) < 0.001 {
       return

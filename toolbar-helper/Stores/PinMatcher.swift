@@ -49,63 +49,39 @@ enum PinMatcher {
       $0.bundleID == reference.bundleID && !consumedWindowIDs.contains($0.id)
     }
     guard !candidates.isEmpty else { return nil }
+    let orderedCandidates = candidates.sorted(by: candidateSortOrder)
 
     if let runtimeID = reference.lastKnownRuntimeID,
-      let runtimeMatch = candidates.first(where: { $0.id == runtimeID })
+      let runtimeMatch = orderedCandidates.first(where: { $0.id == runtimeID })
     {
       return PinMatchResult(window: runtimeMatch, method: .runtimeID)
     }
 
     if let windowNumber = reference.windowNumber,
-      let numberMatch = candidates.first(where: { $0.windowNumber == windowNumber })
+      let numberMatch = orderedCandidates.first(where: { $0.windowNumber == windowNumber })
     {
       return PinMatchResult(window: numberMatch, method: .windowNumber)
     }
 
-    if let referenceSignature = signature(for: reference),
-      let signatureMatch = candidates.first(where: { signature(for: $0) == referenceSignature })
-    {
-      return PinMatchResult(window: signatureMatch, method: .signature)
-    }
-
-    let referenceNormalizedTitle = reference.normalizedTitle ?? normalizedTitle(reference.title)
-    var bestWindow: WindowSnapshot?
-    var bestMethod: PinMatchMethod = .fuzzyTitle
-    var bestScore = Int.min
-
-    for candidate in candidates {
-      let candidateNormalizedTitle = normalizedTitle(candidate.title)
-      let isExactTitle = candidateNormalizedTitle == referenceNormalizedTitle
-      let isFuzzyTitle =
-        candidateNormalizedTitle.contains(referenceNormalizedTitle)
-        || referenceNormalizedTitle.contains(candidateNormalizedTitle)
-
-      guard isExactTitle || isFuzzyTitle else { continue }
-
-      var score = isExactTitle ? 240 : 130
-      let method: PinMatchMethod = isExactTitle ? .exactTitle : .fuzzyTitle
-
-      if let role = reference.role, role == candidate.role {
-        score += 55
+    if let referenceSignature = signature(for: reference) {
+      let signatureMatches = orderedCandidates.filter { signature(for: $0) == referenceSignature }
+      if signatureMatches.count == 1, let match = signatureMatches.first {
+        return PinMatchResult(window: match, method: .signature)
       }
-
-      if let subrole = reference.subrole, subrole == candidate.subrole {
-        score += 35
-      }
-
-      if let referenceFrame = reference.frame, let candidateFrame = candidate.frame {
-        score += frameSimilarityScore(reference: referenceFrame, candidate: candidateFrame)
-      }
-
-      if score > bestScore {
-        bestScore = score
-        bestWindow = candidate
-        bestMethod = method
+      if signatureMatches.count > 1,
+        let scoredSignatureMatch = bestScoredCandidate(
+          for: reference,
+          candidates: signatureMatches
+        )
+      {
+        return PinMatchResult(window: scoredSignatureMatch.window, method: .signature)
       }
     }
 
-    guard let bestWindow else { return nil }
-    return PinMatchResult(window: bestWindow, method: bestMethod)
+    guard let bestCandidate = bestScoredCandidate(for: reference, candidates: orderedCandidates) else {
+      return nil
+    }
+    return PinMatchResult(window: bestCandidate.window, method: bestCandidate.method)
   }
 
   // Combines role/title/frame buckets into a deterministic signature string.
@@ -147,5 +123,104 @@ enum PinMatcher {
     }
 
     return 0
+  }
+
+  // Breaks score ties using exact frame distance so adjacent windows do not swap.
+  private static func frameDistance(reference: WindowFrame?, candidate: WindowFrame?) -> Int {
+    guard let reference, let candidate else { return Int.max }
+    let dx = abs(reference.x - candidate.x)
+    let dy = abs(reference.y - candidate.y)
+    let dw = abs(reference.width - candidate.width)
+    let dh = abs(reference.height - candidate.height)
+    return dx + dy + dw + dh
+  }
+
+  // Picks the strongest title/role/frame-based candidate from a pre-filtered list.
+  private static func bestScoredCandidate(
+    for reference: PinnedWindowReference,
+    candidates: [WindowSnapshot]
+  ) -> (window: WindowSnapshot, method: PinMatchMethod)? {
+    let referenceNormalizedTitle = reference.normalizedTitle ?? normalizedTitle(reference.title)
+    var bestWindow: WindowSnapshot?
+    var bestMethod: PinMatchMethod = .fuzzyTitle
+    var bestScore = Int.min
+    var bestFrameDistance = Int.max
+
+    for candidate in candidates {
+      let candidateNormalizedTitle = normalizedTitle(candidate.title)
+      let isExactTitle = candidateNormalizedTitle == referenceNormalizedTitle
+      let isFuzzyTitle =
+        !referenceNormalizedTitle.isEmpty
+        && (candidateNormalizedTitle.contains(referenceNormalizedTitle)
+          || referenceNormalizedTitle.contains(candidateNormalizedTitle))
+
+      guard isExactTitle || isFuzzyTitle else { continue }
+
+      var score = isExactTitle ? 240 : 130
+      let method: PinMatchMethod = isExactTitle ? .exactTitle : .fuzzyTitle
+
+      if let role = reference.role, role == candidate.role {
+        score += 55
+      }
+
+      if let subrole = reference.subrole, subrole == candidate.subrole {
+        score += 35
+      }
+
+      if let referenceFrame = reference.frame, let candidateFrame = candidate.frame {
+        score += frameSimilarityScore(reference: referenceFrame, candidate: candidateFrame)
+      }
+
+      let candidateFrameDistance = frameDistance(
+        reference: reference.frame,
+        candidate: candidate.frame
+      )
+
+      if score > bestScore
+        || (score == bestScore && candidateFrameDistance < bestFrameDistance)
+        || (score == bestScore && candidateFrameDistance == bestFrameDistance
+          && bestWindow.map { candidateSortOrder(candidate, $0) } == true)
+      {
+        bestScore = score
+        bestFrameDistance = candidateFrameDistance
+        bestWindow = candidate
+        bestMethod = method
+      }
+    }
+
+    guard let bestWindow else { return nil }
+    return (window: bestWindow, method: bestMethod)
+  }
+
+  // Provides deterministic ordering for tie-breaking and "first match" fallbacks.
+  private static func candidateSortOrder(_ lhs: WindowSnapshot, _ rhs: WindowSnapshot) -> Bool {
+    if let result = compareOrderedInts(lhs.windowNumber ?? Int.max, rhs.windowNumber ?? Int.max) {
+      return result
+    }
+    if let result = compareOrderedInts(lhs.frame?.x ?? Int.max, rhs.frame?.x ?? Int.max) {
+      return result
+    }
+    if let result = compareOrderedInts(lhs.frame?.y ?? Int.max, rhs.frame?.y ?? Int.max) {
+      return result
+    }
+    if let result = compareOrderedInts(lhs.frame?.width ?? Int.max, rhs.frame?.width ?? Int.max) {
+      return result
+    }
+    if let result = compareOrderedInts(lhs.frame?.height ?? Int.max, rhs.frame?.height ?? Int.max) {
+      return result
+    }
+
+    let lhsTitle = normalizedTitle(lhs.title)
+    let rhsTitle = normalizedTitle(rhs.title)
+    if lhsTitle != rhsTitle {
+      return lhsTitle < rhsTitle
+    }
+    return lhs.id < rhs.id
+  }
+
+  // Returns ordering when values differ; nil means values were equal.
+  private static func compareOrderedInts(_ lhs: Int, _ rhs: Int) -> Bool? {
+    guard lhs != rhs else { return nil }
+    return lhs < rhs
   }
 }

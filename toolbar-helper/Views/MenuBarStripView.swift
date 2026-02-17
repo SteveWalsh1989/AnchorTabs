@@ -84,6 +84,14 @@ struct MenuBarStripView: View {
       }
 
       Button {
+        model.refreshWindowsNow()
+      } label: {
+        Image(systemName: "arrow.clockwise")
+      }
+      .buttonStyle(.plain)
+      .help("Refresh open windows")
+
+      Button {
         isShowingWindowManager.toggle()
       } label: {
         Image(systemName: "gearshape.fill")
@@ -97,6 +105,12 @@ struct MenuBarStripView: View {
       ) {
         WindowManagerPopoverView(model: model)
       }
+    }
+    .onChange(of: isShowingWindowManager) { _, isVisible in
+      model.setWindowManagerVisibility(isVisible)
+    }
+    .onDisappear {
+      model.setWindowManagerVisibility(false)
     }
     .frame(maxWidth: .infinity, alignment: .trailing)
     .padding(.horizontal, 6)
