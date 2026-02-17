@@ -146,12 +146,6 @@ struct WindowManagerPopoverView: View {
         )
       }
       settingRow(
-        title: "Highlight missing pinned windows",
-        description: "Red underline when missing."
-      ) {
-        checkboxControl(isOn: $model.highlightMissingPins)
-      }
-      settingRow(
         title: "Highlight focused window",
         description: "Purple underline for active tab."
       ) {

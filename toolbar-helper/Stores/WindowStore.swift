@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Combine
+import CryptoKit
 import Foundation
 
 private let windowStoreAXObserverEventNotification = Notification.Name(
@@ -172,6 +173,7 @@ final class WindowStore: ObservableObject {
     for app in apps {
       let appElement = AXUIElementCreateApplication(app.processIdentifier)
       guard let windowElements = axWindowList(for: appElement) else { continue }
+      var fallbackOccurrenceByFingerprint: [String: Int] = [:]
 
       for windowElement in windowElements {
         guard
@@ -181,8 +183,23 @@ final class WindowStore: ObservableObject {
           )
         else { continue }
 
-        snapshots.append(snapshot)
-        handles[snapshot.id] = windowElement
+        let resolvedSnapshot: WindowSnapshot
+        if snapshot.id.isEmpty {
+          let fingerprint = fallbackRuntimeIDFingerprint(for: snapshot)
+          let occurrence = fallbackOccurrenceByFingerprint[fingerprint, default: 0]
+          fallbackOccurrenceByFingerprint[fingerprint] = occurrence + 1
+          let runtimeID = fallbackRuntimeID(
+            pid: app.processIdentifier,
+            fingerprint: fingerprint,
+            occurrence: occurrence
+          )
+          resolvedSnapshot = snapshotWithRuntimeID(snapshot, runtimeID: runtimeID)
+        } else {
+          resolvedSnapshot = snapshot
+        }
+
+        snapshots.append(resolvedSnapshot)
+        handles[resolvedSnapshot.id] = windowElement
       }
     }
 
@@ -381,11 +398,7 @@ final class WindowStore: ObservableObject {
 
     let windowNumber = axIntAttribute(
       for: windowElement, attribute: "AXWindowNumber" as CFString)
-    let runtimeID = buildRuntimeID(
-      pid: app.processIdentifier,
-      windowNumber: windowNumber,
-      windowElement: windowElement
-    )
+    let runtimeID = windowNumber.map { "\(app.processIdentifier)-\($0)" } ?? ""
 
     return WindowSnapshot(
       id: runtimeID,
@@ -409,15 +422,44 @@ final class WindowStore: ObservableObject {
     ]
   }
 
-  // Builds runtime id from stable window number when available.
-  private func buildRuntimeID(pid: pid_t, windowNumber: Int?, windowElement: AXUIElement) -> String
-  {
-    if let windowNumber {
-      return "\(pid)-\(windowNumber)"
-    }
+  // Replaces an unresolved runtime id after deterministic fallback computation.
+  private func snapshotWithRuntimeID(_ snapshot: WindowSnapshot, runtimeID: String) -> WindowSnapshot {
+    WindowSnapshot(
+      id: runtimeID,
+      pid: snapshot.pid,
+      bundleID: snapshot.bundleID,
+      appName: snapshot.appName,
+      title: snapshot.title,
+      windowNumber: snapshot.windowNumber,
+      role: snapshot.role,
+      subrole: snapshot.subrole,
+      frame: snapshot.frame,
+      isMinimized: snapshot.isMinimized
+    )
+  }
 
-    let pointer = Unmanaged.passUnretained(windowElement).toOpaque()
-    return "\(pid)-\(Int(bitPattern: pointer))"
+  // Creates stable fallback identity input from role/title/frame details.
+  private func fallbackRuntimeIDFingerprint(for snapshot: WindowSnapshot) -> String {
+    let normalizedTitle = snapshot.title.normalizedForMatching()
+    let frameText: String
+    if let frame = snapshot.frame {
+      frameText = "\(frame.x),\(frame.y),\(frame.width),\(frame.height)"
+    } else {
+      frameText = "-"
+    }
+    return "\(snapshot.role)|\(snapshot.subrole ?? "-")|\(normalizedTitle)|\(frameText)"
+  }
+
+  // Builds deterministic runtime id for windows missing AXWindowNumber.
+  private func fallbackRuntimeID(pid: pid_t, fingerprint: String, occurrence: Int) -> String {
+    let digest = stableShortDigest(fingerprint)
+    return "\(pid)-fallback-\(digest)-\(occurrence)"
+  }
+
+  // Produces a short stable hash to keep fallback ids compact.
+  private func stableShortDigest(_ value: String) -> String {
+    let digest = SHA256.hash(data: Data(value.utf8))
+    return digest.prefix(8).map { String(format: "%02x", $0) }.joined()
   }
 
   // Reads the app-level AX window list and safely downcasts values.
@@ -481,20 +523,15 @@ final class WindowStore: ObservableObject {
       for: focusedWindowElement,
       attribute: "AXWindowNumber" as CFString
     )
-    let focusedRuntimeID = buildRuntimeID(
-      pid: pid,
-      windowNumber: focusedWindowNumber,
-      windowElement: focusedWindowElement
-    )
-    if windows.contains(where: { $0.id == focusedRuntimeID }) {
-      return focusedRuntimeID
-    }
-
     let candidateWindows = windows.filter { $0.pid == pid }
-    if let focusedWindowNumber,
-      let numberMatch = candidateWindows.first(where: { $0.windowNumber == focusedWindowNumber })
-    {
-      return numberMatch.id
+    if let focusedWindowNumber {
+      let focusedRuntimeID = "\(pid)-\(focusedWindowNumber)"
+      if windows.contains(where: { $0.id == focusedRuntimeID }) {
+        return focusedRuntimeID
+      }
+      if let numberMatch = candidateWindows.first(where: { $0.windowNumber == focusedWindowNumber }) {
+        return numberMatch.id
+      }
     }
 
     let focusedWindowTitle =

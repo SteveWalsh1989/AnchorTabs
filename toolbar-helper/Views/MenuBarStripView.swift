@@ -136,7 +136,6 @@ struct MenuBarStripView: View {
         TabButtonStyle(
           tabKind,
           minWidth: model.menuPinnedItemMinWidth,
-          showsMissingUnderline: model.highlightMissingPins,
           showsFocusedUnderline: model.highlightFocusedWindow
         )
       )
@@ -219,19 +218,16 @@ private struct TabButtonStyle: ButtonStyle {
 
   let kind: Kind
   let minWidth: Double
-  let showsMissingUnderline: Bool
   let showsFocusedUnderline: Bool
   private static let focusedUnderlineColor = Color(red: 0.69, green: 0.56, blue: 0.94)
 
   init(
     _ kind: Kind,
     minWidth: Double = 0,
-    showsMissingUnderline: Bool = true,
     showsFocusedUnderline: Bool = true
   ) {
     self.kind = kind
     self.minWidth = minWidth
-    self.showsMissingUnderline = showsMissingUnderline
     self.showsFocusedUnderline = showsFocusedUnderline
   }
 
@@ -248,7 +244,7 @@ private struct TabButtonStyle: ButtonStyle {
       )
       .foregroundStyle(foregroundColor)
       .overlay(alignment: .bottom) {
-        if kind == .missing && showsMissingUnderline {
+        if kind == .missing {
           Rectangle()
             .fill(Color.red.opacity(0.85))
             .frame(height: 1)
