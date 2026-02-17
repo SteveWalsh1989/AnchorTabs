@@ -416,6 +416,7 @@
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/toolbar-helper.app/Contents/MacOS/toolbar-helper";
 				TEST_TARGET_NAME = "toolbar-helper";
 			};
 			name = Debug;
@@ -434,6 +435,7 @@
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/toolbar-helper.app/Contents/MacOS/toolbar-helper";
 				TEST_TARGET_NAME = "toolbar-helper";
 			};
 			name = Release;
