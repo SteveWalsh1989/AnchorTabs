@@ -122,8 +122,3 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 - No network dependency for core behavior.
 - Pinned metadata, labels, and settings are stored locally in `UserDefaults`.
 
-## Naming Notes
-
-- Product name: `AnchorTabs`
-- Target/scheme/source folders: `anchorTabs`
-- Bundle identifier: `com.stevewalsh.AnchorTabs`
