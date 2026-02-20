@@ -6,7 +6,8 @@ It is designed for heavy multi-window workflows (for example, multiple Cursor wo
 
 ## Why make it
 - Personally I never found the ALT TAB or ALT SHIFT TAB or swipe up to be a good way of switching for active windows, especially if just switching often between a few of the opened windows
-- This allows you to select a few windows for quick access at the top, this means no more leaving a small section overlapping or having windows different heights to try move quickly or using swipe and then figuring out which window is which. 
+- This allows you to select a few windows for quick access on the menu bar, this means no more leaving a small section overlapping or having windows different heights to try move quickly or using swipe and then figuring out which window is which.
+- You can add spacing so can position to the center of the screen, great for ultrawide monitors
 
 ## Features
 
