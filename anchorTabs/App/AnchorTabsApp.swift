@@ -1,14 +1,14 @@
 import SwiftUI
 
-// App entry point that boots the status-item lifecycle via AppDelegate.
+// App entry point that boots the status-item lifecycle via AnchorTabsAppDelegate.
 @main
 struct AnchorTabsApp: App {
-  @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+  @NSApplicationDelegateAdaptor(AnchorTabsAppDelegate.self) private var appDelegate
 
   // Exposes only Settings because the main UI lives in the menu bar.
   var body: some Scene {
     Settings {
-      SettingsView(model: appDelegate.model)
+      AppSettingsView(model: appDelegate.model)
     }
   }
 }

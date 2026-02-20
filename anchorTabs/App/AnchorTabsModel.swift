@@ -4,7 +4,7 @@ import Foundation
 
 // App-level coordinator that binds permission, window, and pin stores.
 @MainActor
-final class AppModel: ObservableObject {
+final class AnchorTabsModel: ObservableObject {
   static let menuTrailingSpacingRange: ClosedRange<Double> = 0...5000
   static let menuPinnedItemMinWidthRange: ClosedRange<Double> = 0...5000
   private static let defaultMenuTrailingSpacing = 0.0
@@ -18,8 +18,8 @@ final class AppModel: ObservableObject {
   @Published private(set) var pinnedItems: [PinnedWindowItem] = []
   @Published private(set) var isAccessibilityTrusted = false
   @Published private(set) var maxVisiblePinnedTabs = 10
-  @Published private(set) var windowDiagnostics = WindowStoreDiagnostics.empty
-  @Published private(set) var pinnedDiagnostics = PinnedStoreDiagnostics.empty
+  @Published private(set) var windowDiagnostics = OpenWindowsStoreDiagnostics.empty
+  @Published private(set) var pinnedDiagnostics = PinnedWindowsStoreDiagnostics.empty
   @Published private(set) var focusedWindowRuntimeID: String?
   @Published private(set) var hidesPinnedItemsInMenuBar = false
 
@@ -48,19 +48,19 @@ final class AppModel: ObservableObject {
     }
   }
 
-  let permissionManager: AccessibilityPermissionManager
+  let permissionManager: AccessibilityPermissionService
 
-  private let windowStore: WindowStore
-  private let pinnedStore: PinnedStore
+  private let windowStore: OpenWindowsStore
+  private let pinnedStore: PinnedWindowsStore
   private let userDefaults: UserDefaults
   private let iconCache = NSCache<NSString, NSImage>()
   private var cancellables: Set<AnyCancellable> = []
-  @Published private(set) var isWindowManagerVisible = false
+  @Published private(set) var isWindowPopoverVisible = false
 
   // Injects dependencies for testing and previews.
   init(
-    permissionManager: AccessibilityPermissionManager,
-    pinnedStore: PinnedStore,
+    permissionManager: AccessibilityPermissionService,
+    pinnedStore: PinnedWindowsStore,
     userDefaults: UserDefaults = .standard
   ) {
     self.permissionManager = permissionManager
@@ -102,15 +102,15 @@ final class AppModel: ObservableObject {
     } else {
       hidesPinnedItemsInMenuBar = userDefaults.bool(forKey: Self.hidePinnedItemsInMenuBarKey)
     }
-    windowStore = WindowStore(permissionManager: permissionManager)
+    windowStore = OpenWindowsStore(permissionManager: permissionManager)
     bindStores()
   }
 
   // Creates production dependencies.
   convenience init() {
     self.init(
-      permissionManager: AccessibilityPermissionManager(),
-      pinnedStore: PinnedStore(),
+      permissionManager: AccessibilityPermissionService(),
+      pinnedStore: PinnedWindowsStore(),
       userDefaults: .standard
     )
   }
@@ -149,23 +149,23 @@ final class AppModel: ObservableObject {
 
   // Forces an immediate AX window refresh.
   func refreshWindowsNow() {
-    windowStore.refreshNow(reason: .manual)
+    windowStore.refreshWindowsNow(reason: .manual)
   }
 
   // Tracks popover visibility and reapplies the shared refresh policy.
-  func setWindowManagerVisibility(_ isVisible: Bool) {
-    guard isWindowManagerVisible != isVisible else { return }
-    isWindowManagerVisible = isVisible
+  func setWindowPopoverVisibility(_ isVisible: Bool) {
+    guard isWindowPopoverVisible != isVisible else { return }
+    isWindowPopoverVisible = isVisible
     updateWindowRefreshPolicy()
   }
 
   // Toggles the window manager popover visibility.
-  func toggleWindowManagerVisibility() {
-    setWindowManagerVisibility(!isWindowManagerVisible)
+  func toggleWindowPopoverVisibility() {
+    setWindowPopoverVisibility(!isWindowPopoverVisible)
   }
 
   // Hides or shows pinned tabs in the menu bar strip while keeping the gear button visible.
-  func setPinnedItemsHiddenInMenuBar(_ isHidden: Bool) {
+  func setMenuBarPinnedItemsHidden(_ isHidden: Bool) {
     guard hidesPinnedItemsInMenuBar != isHidden else { return }
     hidesPinnedItemsInMenuBar = isHidden
     userDefaults.set(isHidden, forKey: Self.hidePinnedItemsInMenuBarKey)
@@ -173,8 +173,8 @@ final class AppModel: ObservableObject {
   }
 
   // Toggles pinned tab visibility in the menu bar strip.
-  func togglePinnedItemsHiddenInMenuBar() {
-    setPinnedItemsHiddenInMenuBar(!hidesPinnedItemsInMenuBar)
+  func toggleMenuBarPinnedItemsHidden() {
+    setMenuBarPinnedItemsHidden(!hidesPinnedItemsInMenuBar)
   }
 
   // Rebuilds the AX session without clearing persisted pins.
@@ -307,7 +307,7 @@ final class AppModel: ObservableObject {
   // Focuses the exact runtime window for a pinned item.
   func activatePinnedItem(_ item: PinnedWindowItem) {
     guard let runtimeID = item.window?.id else { return }
-    _ = windowStore.activateWindow(runtimeID: runtimeID)
+    _ = windowStore.focusWindow(runtimeID: runtimeID)
   }
 
   // Reassigns a pin to another live window while preserving its custom label.
@@ -337,7 +337,7 @@ final class AppModel: ObservableObject {
 
   // Focuses a live window selected from the open-windows list.
   func activateWindow(_ window: WindowSnapshot) {
-    _ = windowStore.activateWindow(runtimeID: window.id)
+    _ = windowStore.focusWindow(runtimeID: window.id)
   }
 
   // Returns true when a pinned item currently matches the focused runtime window.
@@ -429,7 +429,7 @@ final class AppModel: ObservableObject {
 
   // Applies the shared refresh policy for popover visibility and hidden-strip mode.
   private func updateWindowRefreshPolicy() {
-    if isWindowManagerVisible || hidesPinnedItemsInMenuBar {
+    if isWindowPopoverVisible || hidesPinnedItemsInMenuBar {
       windowStore.pauseAutomaticRefreshing()
     } else {
       windowStore.resumeAutomaticRefreshing()

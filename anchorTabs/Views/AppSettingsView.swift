@@ -1,8 +1,8 @@
 import SwiftUI
 
 // Minimal Settings scene for permission guidance in a menu bar-only app.
-struct SettingsView: View {
-  @ObservedObject var model: AppModel
+struct AppSettingsView: View {
+  @ObservedObject var model: AnchorTabsModel
 
   // Shows current Accessibility state and quick settings shortcuts.
   var body: some View {
@@ -84,7 +84,7 @@ struct SettingsView: View {
     Binding(
       get: { model.menuTrailingSpacing },
       set: { newValue in
-        model.menuTrailingSpacing = clampedRounded(newValue, range: AppModel.menuTrailingSpacingRange)
+        model.menuTrailingSpacing = clampedRounded(newValue, range: AnchorTabsModel.menuTrailingSpacingRange)
       }
     )
   }
@@ -93,7 +93,7 @@ struct SettingsView: View {
     Binding(
       get: { model.menuPinnedItemMinWidth },
       set: { newValue in
-        model.menuPinnedItemMinWidth = clampedRounded(newValue, range: AppModel.menuPinnedItemMinWidthRange)
+        model.menuPinnedItemMinWidth = clampedRounded(newValue, range: AnchorTabsModel.menuPinnedItemMinWidthRange)
       }
     )
   }

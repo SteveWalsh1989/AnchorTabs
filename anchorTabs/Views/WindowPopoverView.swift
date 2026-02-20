@@ -3,8 +3,8 @@ import Combine
 import SwiftUI
 
 // Popover UI for browsing open windows and managing pin/rename actions.
-struct WindowManagerPopoverView: View {
-  @ObservedObject var model: AppModel
+struct WindowPopoverView: View {
+  @ObservedObject var model: AnchorTabsModel
   @State private var isShowingLayoutSettings = false
   private let accessibilityStateRefreshTimer = Timer.publish(every: 1.0, on: .main, in: .common)
     .autoconnect()
@@ -99,7 +99,7 @@ struct WindowManagerPopoverView: View {
 
   private var hidePinnedItemsButton: some View {
     Button {
-      model.togglePinnedItemsHiddenInMenuBar()
+      model.toggleMenuBarPinnedItemsHidden()
     } label: {
       Image(systemName: model.hidesPinnedItemsInMenuBar ? "eye" : "eye.slash")
     }
@@ -195,7 +195,7 @@ struct WindowManagerPopoverView: View {
         title: "Spacing",
         description: "Gap before the gear icon."
       ) {
-        numberInputControl(value: $model.menuTrailingSpacing, range: AppModel.menuTrailingSpacingRange)
+        numberInputControl(value: $model.menuTrailingSpacing, range: AnchorTabsModel.menuTrailingSpacingRange)
       }
       settingRow(
         title: "Pinned Item Min Width",
@@ -203,7 +203,7 @@ struct WindowManagerPopoverView: View {
       ) {
         numberInputControl(
           value: $model.menuPinnedItemMinWidth,
-          range: AppModel.menuPinnedItemMinWidthRange
+          range: AnchorTabsModel.menuPinnedItemMinWidthRange
         )
       }
       settingRow(
@@ -281,7 +281,7 @@ struct WindowManagerPopoverView: View {
           ForEach(orderedWindows) { window in
             let isPinned = model.isPinned(window: window)
             let rowLabel = displayLabel(for: window)
-            WindowManagerWindowRow(
+            WindowPopoverWindowRowView(
               displayLabel: rowLabel,
               nameTooltip: rowLabel,
               renameInfoTooltip: renamedWindowTooltip(for: window),
@@ -301,7 +301,7 @@ struct WindowManagerPopoverView: View {
             ForEach(orderedWindows) { window in
               let isPinned = model.isPinned(window: window)
               let rowLabel = displayLabel(for: window)
-              WindowManagerWindowRow(
+              WindowPopoverWindowRowView(
                 displayLabel: rowLabel,
                 nameTooltip: rowLabel,
                 renameInfoTooltip: renamedWindowTooltip(for: window),
@@ -389,7 +389,7 @@ struct WindowManagerPopoverView: View {
 }
 
 // Row used by the window popover list with pin, name, and rename affordances.
-private struct WindowManagerWindowRow: View {
+private struct WindowPopoverWindowRowView: View {
   let displayLabel: String
   let nameTooltip: String
   let renameInfoTooltip: String?
@@ -405,7 +405,7 @@ private struct WindowManagerWindowRow: View {
       Button {
         onTogglePin()
       } label: {
-        Image(systemName: "anchor")
+        Image(systemName: "pin")
       }
       .buttonStyle(.plain)
       .foregroundStyle(isPinned ? Color.accentColor : Color.secondary)

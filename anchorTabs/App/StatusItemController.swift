@@ -4,11 +4,11 @@ import SwiftUI
 
 // Hosts the SwiftUI strip inside an NSStatusItem and keeps width in sync.
 @MainActor
-final class StatusBarController: NSObject, NSPopoverDelegate {
+final class StatusItemController: NSObject, NSPopoverDelegate {
   private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-  private let hostingView: NSHostingView<MenuBarStripView>
-  private let model: AppModel
-  private let windowManagerPopover = NSPopover()
+  private let hostingView: NSHostingView<MenuBarView>
+  private let model: AnchorTabsModel
+  private let windowPopover = NSPopover()
   private let minimumLength: CGFloat = 70
   private let compactMinimumLength: CGFloat = 18
   private let lengthPadding: CGFloat = 10
@@ -19,25 +19,25 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
   private let lengthUpdateDebounceMs = 100
   private var lastAppliedLength: CGFloat?
   private var isCompactMode = false
-  private var isWindowManagerVisible = false
+  private var isWindowPopoverVisible = false
   private var cancellables: Set<AnyCancellable> = []
 
   // Creates the hosting view and binds status item sizing updates.
-  init(model: AppModel) {
+  init(model: AnchorTabsModel) {
     self.model = model
-    hostingView = NSHostingView(rootView: MenuBarStripView(model: model))
+    hostingView = NSHostingView(rootView: MenuBarView(model: model))
     super.init()
-    configureWindowManagerPopover()
+    configureWindowPopover()
     installHostView()
     observeModel(model)
     updateLength()
   }
 
-  private func configureWindowManagerPopover() {
-    windowManagerPopover.behavior = .transient
-    windowManagerPopover.animates = false
-    windowManagerPopover.delegate = self
-    windowManagerPopover.contentSize = NSSize(width: 400, height: 430)
+  private func configureWindowPopover() {
+    windowPopover.behavior = .transient
+    windowPopover.animates = false
+    windowPopover.delegate = self
+    windowPopover.contentSize = NSSize(width: 400, height: 430)
   }
 
   // Installs the SwiftUI host as the status bar button content view.
@@ -58,17 +58,17 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
   }
 
   // Listens for model changes so width can adapt to changing tab labels.
-  private func observeModel(_ model: AppModel) {
-    model.$isWindowManagerVisible
+  private func observeModel(_ model: AnchorTabsModel) {
+    model.$isWindowPopoverVisible
       .removeDuplicates()
       .receive(on: DispatchQueue.main)
       .sink { [weak self] isVisible in
         guard let self else { return }
-        self.isWindowManagerVisible = isVisible
+        self.isWindowPopoverVisible = isVisible
         if isVisible {
-          self.showWindowManagerPopover()
+          self.showWindowPopover()
         } else {
-          self.hideWindowManagerPopover()
+          self.hideWindowPopover()
         }
         if !isVisible {
           self.updateLengthIfNeeded()
@@ -138,15 +138,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     isCompactMode ? compactLengthPadding : lengthPadding
   }
 
-  private func showWindowManagerPopover() {
-    guard !windowManagerPopover.isShown else { return }
+  private func showWindowPopover() {
+    guard !windowPopover.isShown else { return }
     guard let button = statusItem.button else {
-      model.setWindowManagerVisibility(false)
+      model.setWindowPopoverVisibility(false)
       return
     }
 
-    windowManagerPopover.contentViewController = NSHostingController(
-      rootView: WindowManagerPopoverView(model: model)
+    windowPopover.contentViewController = NSHostingController(
+      rootView: WindowPopoverView(model: model)
     )
 
     let anchorCenterX = max(
@@ -159,15 +159,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
       width: 1,
       height: button.bounds.height
     )
-    windowManagerPopover.show(relativeTo: anchorRect, of: button, preferredEdge: .minY)
+    windowPopover.show(relativeTo: anchorRect, of: button, preferredEdge: .minY)
   }
 
-  private func hideWindowManagerPopover() {
-    guard windowManagerPopover.isShown else { return }
-    windowManagerPopover.performClose(nil)
+  private func hideWindowPopover() {
+    guard windowPopover.isShown else { return }
+    windowPopover.performClose(nil)
   }
 
   func popoverDidClose(_ notification: Notification) {
-    model.setWindowManagerVisibility(false)
+    model.setWindowPopoverVisibility(false)
   }
 }

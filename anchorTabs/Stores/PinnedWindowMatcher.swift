@@ -1,13 +1,13 @@
 import Foundation
 
 // Carries the chosen window plus the strategy used to pick it.
-struct PinMatchResult {
+struct PinnedWindowMatchResult {
   let window: WindowSnapshot
   let method: PinMatchMethod
 }
 
-// Stateless matching engine used by PinnedStore reconciliation.
-enum PinMatcher {
+// Stateless matching engine used by PinnedWindowsStore reconciliation.
+enum PinnedWindowMatcher {
   // Produces a normalized title token for matching and signatures.
   static func normalizedTitle(_ title: String) -> String {
     title.normalizedForMatching()
@@ -44,7 +44,7 @@ enum PinMatcher {
     for reference: PinnedWindowReference,
     in windows: [WindowSnapshot],
     consumedWindowIDs: Set<String>
-  ) -> PinMatchResult? {
+  ) -> PinnedWindowMatchResult? {
     let candidates = windows.filter {
       $0.bundleID == reference.bundleID && !consumedWindowIDs.contains($0.id)
     }
@@ -56,7 +56,7 @@ enum PinMatcher {
       let runtimeMatch = orderedCandidates.first(where: { $0.id == runtimeID })
     {
       if !isLegacyOccurrenceFallbackRuntimeID(runtimeID) {
-        return PinMatchResult(window: runtimeMatch, method: .runtimeID)
+        return PinnedWindowMatchResult(window: runtimeMatch, method: .runtimeID)
       }
 
       let shouldTrustFallbackRuntimeID: Bool
@@ -69,20 +69,20 @@ enum PinMatcher {
       }
 
       if shouldTrustFallbackRuntimeID {
-        return PinMatchResult(window: runtimeMatch, method: .runtimeID)
+        return PinnedWindowMatchResult(window: runtimeMatch, method: .runtimeID)
       }
     }
 
     if let windowNumber = reference.windowNumber,
       let numberMatch = orderedCandidates.first(where: { $0.windowNumber == windowNumber })
     {
-      return PinMatchResult(window: numberMatch, method: .windowNumber)
+      return PinnedWindowMatchResult(window: numberMatch, method: .windowNumber)
     }
 
     if let referenceSignature {
       let signatureMatches = orderedCandidates.filter { signature(for: $0) == referenceSignature }
       if signatureMatches.count == 1, let match = signatureMatches.first {
-        return PinMatchResult(window: match, method: .signature)
+        return PinnedWindowMatchResult(window: match, method: .signature)
       }
       if signatureMatches.count > 1 {
         return nil
@@ -94,7 +94,7 @@ enum PinMatcher {
     else {
       return nil
     }
-    return PinMatchResult(window: bestCandidate.window, method: bestCandidate.method)
+    return PinnedWindowMatchResult(window: bestCandidate.window, method: bestCandidate.method)
   }
 
   // Combines role/title/frame buckets into a deterministic signature string.

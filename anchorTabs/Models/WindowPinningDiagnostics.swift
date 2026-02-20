@@ -9,8 +9,8 @@ enum WindowRefreshReason: String {
   case manual = "Manual"
 }
 
-// Runtime health metrics emitted by WindowStore.
-struct WindowStoreDiagnostics {
+// Runtime health metrics emitted by OpenWindowsStore.
+struct OpenWindowsStoreDiagnostics {
   var isTrusted: Bool
   var observerRegistrationCount: Int
   var activePollingInterval: TimeInterval?
@@ -21,7 +21,7 @@ struct WindowStoreDiagnostics {
   var lastRefreshDurationMs: Double?
   var windowCount: Int
 
-  static let empty = WindowStoreDiagnostics(
+  static let empty = OpenWindowsStoreDiagnostics(
     isTrusted: false,
     observerRegistrationCount: 0,
     activePollingInterval: nil,
@@ -43,8 +43,8 @@ enum PinMatchMethod: String, CaseIterable {
   case fuzzyTitle = "Fuzzy Title"
 }
 
-// Runtime health metrics emitted by PinnedStore reconciliation.
-struct PinnedStoreDiagnostics {
+// Runtime health metrics emitted by PinnedWindowsStore reconciliation.
+struct PinnedWindowsStoreDiagnostics {
   var totalPins: Int
   var matchedPins: Int
   var missingPins: Int
@@ -52,7 +52,7 @@ struct PinnedStoreDiagnostics {
   var lastReconcileDurationMs: Double?
   var matchCountsByMethod: [PinMatchMethod: Int]
 
-  static let empty = PinnedStoreDiagnostics(
+  static let empty = PinnedWindowsStoreDiagnostics(
     totalPins: 0,
     matchedPins: 0,
     missingPins: 0,

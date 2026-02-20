@@ -4,8 +4,8 @@ import XCTest
 @testable import anchorTabs
 
 @MainActor
-final class PinnedStoreTests: XCTestCase {
-  func testPinMatcherPrefersRuntimeID() {
+final class PinnedWindowsStoreTests: XCTestCase {
+  func testPinnedWindowMatcherPrefersRuntimeID() {
     let reference = makeReference(
       bundleID: "com.example.browser",
       title: "Project Plan",
@@ -28,7 +28,7 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 12, y: 11, width: 1200, height: 760)
     )
 
-    let result = PinMatcher.findBestMatch(
+    let result = PinnedWindowMatcher.findBestMatch(
       for: reference,
       in: [matchingWindow],
       consumedWindowIDs: []
@@ -38,7 +38,7 @@ final class PinnedStoreTests: XCTestCase {
     XCTAssertEqual(result?.method, .runtimeID)
   }
 
-  func testPinMatcherFallsBackToSignature() {
+  func testPinnedWindowMatcherFallsBackToSignature() {
     let oldWindow = makeWindow(
       id: "700-31",
       pid: 700,
@@ -60,7 +60,7 @@ final class PinnedStoreTests: XCTestCase {
       subrole: oldWindow.subrole,
       frame: oldWindow.frame
     )
-    reference.signature = PinMatcher.signature(for: oldWindow)
+    reference.signature = PinnedWindowMatcher.signature(for: oldWindow)
     reference.lastKnownRuntimeID = "700-99"
     reference.windowNumber = 99
 
@@ -76,7 +76,7 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 148, y: 118, width: 1100, height: 720)
     )
 
-    let result = PinMatcher.findBestMatch(
+    let result = PinnedWindowMatcher.findBestMatch(
       for: reference,
       in: [relaunchedWindow],
       consumedWindowIDs: []
@@ -86,7 +86,7 @@ final class PinnedStoreTests: XCTestCase {
     XCTAssertEqual(result?.method, .signature)
   }
 
-  func testPinMatcherSignatureCollisionIsTreatedAsAmbiguous() {
+  func testPinnedWindowMatcherSignatureCollisionIsTreatedAsAmbiguous() {
     let reference = makeReference(
       bundleID: "com.example.cursor",
       title: "Workspace",
@@ -121,7 +121,7 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 100, y: 100, width: 1200, height: 760)
     )
 
-    let result = PinMatcher.findBestMatch(
+    let result = PinnedWindowMatcher.findBestMatch(
       for: reference,
       in: [otherWindow, expectedWindow],
       consumedWindowIDs: []
@@ -130,7 +130,7 @@ final class PinnedStoreTests: XCTestCase {
     XCTAssertNil(result)
   }
 
-  func testPinMatcherIgnoresLegacyFallbackRuntimeIDWhenSignatureIsAmbiguous() {
+  func testPinnedWindowMatcherIgnoresLegacyFallbackRuntimeIDWhenSignatureIsAmbiguous() {
     let reference = makeReference(
       bundleID: "com.example.cursor",
       title: "Workspace",
@@ -165,7 +165,7 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 100, y: 100, width: 1200, height: 760)
     )
 
-    let result = PinMatcher.findBestMatch(
+    let result = PinnedWindowMatcher.findBestMatch(
       for: reference,
       in: [wrongRuntimeMatch, otherWindow],
       consumedWindowIDs: []
@@ -174,7 +174,7 @@ final class PinnedStoreTests: XCTestCase {
     XCTAssertNil(result)
   }
 
-  func testPinMatcherDoesNotTitleFallbackAcrossMultipleAppWindows() {
+  func testPinnedWindowMatcherDoesNotTitleFallbackAcrossMultipleAppWindows() {
     let reference = makeReference(
       bundleID: "com.example.browser",
       title: "Project Plan",
@@ -209,7 +209,7 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 40, y: 40, width: 1200, height: 760)
     )
 
-    let result = PinMatcher.findBestMatch(
+    let result = PinnedWindowMatcher.findBestMatch(
       for: reference,
       in: [exactTitleWindow, otherWindow],
       consumedWindowIDs: []
@@ -218,7 +218,7 @@ final class PinnedStoreTests: XCTestCase {
     XCTAssertNil(result)
   }
 
-  func testWindowStoreFallbackRuntimeIDFingerprintNormalizesTitle() {
+  func testOpenWindowsStoreFallbackRuntimeIDFingerprintNormalizesTitle() {
     let snapshotA = makeWindow(
       id: "",
       pid: 901,
@@ -243,12 +243,12 @@ final class PinnedStoreTests: XCTestCase {
     )
 
     XCTAssertEqual(
-      WindowStore.fallbackRuntimeIDFingerprint(for: snapshotA),
-      WindowStore.fallbackRuntimeIDFingerprint(for: snapshotB)
+      OpenWindowsStore.fallbackRuntimeIDFingerprint(for: snapshotA),
+      OpenWindowsStore.fallbackRuntimeIDFingerprint(for: snapshotB)
     )
   }
 
-  func testWindowStoreFallbackRuntimeIDIsDeterministicAndOccurrenceSensitive() {
+  func testOpenWindowsStoreFallbackRuntimeIDIsDeterministicAndOccurrenceSensitive() {
     let snapshot = makeWindow(
       id: "",
       pid: 777,
@@ -261,14 +261,14 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 120, y: 80, width: 1180, height: 740)
     )
 
-    let fingerprint = WindowStore.fallbackRuntimeIDFingerprint(for: snapshot)
-    let firstID = WindowStore.fallbackRuntimeID(pid: snapshot.pid, fingerprint: fingerprint, occurrence: 0)
-    let firstIDAgain = WindowStore.fallbackRuntimeID(
+    let fingerprint = OpenWindowsStore.fallbackRuntimeIDFingerprint(for: snapshot)
+    let firstID = OpenWindowsStore.fallbackRuntimeID(pid: snapshot.pid, fingerprint: fingerprint, occurrence: 0)
+    let firstIDAgain = OpenWindowsStore.fallbackRuntimeID(
       pid: snapshot.pid,
       fingerprint: fingerprint,
       occurrence: 0
     )
-    let secondID = WindowStore.fallbackRuntimeID(
+    let secondID = OpenWindowsStore.fallbackRuntimeID(
       pid: snapshot.pid,
       fingerprint: fingerprint,
       occurrence: 1
@@ -281,8 +281,8 @@ final class PinnedStoreTests: XCTestCase {
   }
 
   @MainActor
-  func testPinnedStorePersistsRenameAcrossReload() {
-    let suiteName = "PinnedStoreTests.\(UUID().uuidString)"
+  func testPinnedWindowsStorePersistsRenameAcrossReload() {
+    let suiteName = "PinnedWindowsStoreTests.\(UUID().uuidString)"
     guard let defaults = UserDefaults(suiteName: suiteName) else {
       XCTFail("Unable to create test defaults suite")
       return
@@ -301,7 +301,7 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 80, y: 80, width: 1050, height: 700)
     )
 
-    let store = PinnedStore(userDefaults: defaults)
+    let store = PinnedWindowsStore(userDefaults: defaults)
     store.reconcile(with: [window])
     store.togglePin(for: window)
 
@@ -312,7 +312,7 @@ final class PinnedStoreTests: XCTestCase {
 
     store.renamePin(pinID: pinID, customName: "Work Inbox")
 
-    let reloadedStore = PinnedStore(userDefaults: defaults)
+    let reloadedStore = PinnedWindowsStore(userDefaults: defaults)
     reloadedStore.reconcile(with: [window])
 
     XCTAssertEqual(reloadedStore.pinnedItems.count, 1)
@@ -321,8 +321,8 @@ final class PinnedStoreTests: XCTestCase {
   }
 
   @MainActor
-  func testPinnedStoreMarksMissingWhenWindowDisappears() {
-    let suiteName = "PinnedStoreTests.\(UUID().uuidString)"
+  func testPinnedWindowsStoreMarksMissingWhenWindowDisappears() {
+    let suiteName = "PinnedWindowsStoreTests.\(UUID().uuidString)"
     guard let defaults = UserDefaults(suiteName: suiteName) else {
       XCTFail("Unable to create test defaults suite")
       return
@@ -341,7 +341,7 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 40, y: 40, width: 1280, height: 820)
     )
 
-    let store = PinnedStore(userDefaults: defaults)
+    let store = PinnedWindowsStore(userDefaults: defaults)
     store.reconcile(with: [window])
     store.togglePin(for: window)
     store.reconcile(with: [])
@@ -355,8 +355,8 @@ final class PinnedStoreTests: XCTestCase {
   }
 
   @MainActor
-  func testPinnedStoreKeepsAssignmentsStableWhenWindowOrderChanges() throws {
-    let suiteName = "PinnedStoreTests.\(UUID().uuidString)"
+  func testPinnedWindowsStoreKeepsAssignmentsStableWhenWindowOrderChanges() throws {
+    let suiteName = "PinnedWindowsStoreTests.\(UUID().uuidString)"
     guard let defaults = UserDefaults(suiteName: suiteName) else {
       XCTFail("Unable to create test defaults suite")
       return
@@ -413,7 +413,7 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 130, y: 130, width: 1200, height: 760)
     )
 
-    let store = PinnedStore(userDefaults: defaults)
+    let store = PinnedWindowsStore(userDefaults: defaults)
     store.reconcile(with: [secondWindow, firstWindow])
     let firstMatchBefore = store.pinnedItems.first(where: { $0.id == firstPinID })?.window?.id
     let secondMatchBefore = store.pinnedItems.first(where: { $0.id == secondPinID })?.window?.id
@@ -430,8 +430,8 @@ final class PinnedStoreTests: XCTestCase {
   }
 
   @MainActor
-  func testPinnedStoreRefreshesStoredWindowNamesAndKeepsThemWhenMissing() {
-    let suiteName = "PinnedStoreTests.\(UUID().uuidString)"
+  func testPinnedWindowsStoreRefreshesStoredWindowNamesAndKeepsThemWhenMissing() {
+    let suiteName = "PinnedWindowsStoreTests.\(UUID().uuidString)"
     guard let defaults = UserDefaults(suiteName: suiteName) else {
       XCTFail("Unable to create test defaults suite")
       return
@@ -462,7 +462,7 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 140, y: 90, width: 1200, height: 780)
     )
 
-    let store = PinnedStore(userDefaults: defaults)
+    let store = PinnedWindowsStore(userDefaults: defaults)
     store.reconcile(with: [initialWindow])
     store.togglePin(for: initialWindow)
     store.reconcile(with: [renamedWindow])
@@ -478,8 +478,8 @@ final class PinnedStoreTests: XCTestCase {
   }
 
   @MainActor
-  func testPinnedStoreReassignPinKeepsCustomNameAndUpdatesIdentity() {
-    let suiteName = "PinnedStoreTests.\(UUID().uuidString)"
+  func testPinnedWindowsStoreReassignPinKeepsCustomNameAndUpdatesIdentity() {
+    let suiteName = "PinnedWindowsStoreTests.\(UUID().uuidString)"
     guard let defaults = UserDefaults(suiteName: suiteName) else {
       XCTFail("Unable to create test defaults suite")
       return
@@ -509,7 +509,7 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 220, y: 120, width: 1200, height: 760)
     )
 
-    let store = PinnedStore(userDefaults: defaults)
+    let store = PinnedWindowsStore(userDefaults: defaults)
     store.reconcile(with: [initialWindow, replacementWindow])
     store.togglePin(for: initialWindow)
 
@@ -581,7 +581,7 @@ private func makeReference(
     role: role,
     subrole: subrole,
     customName: nil,
-    normalizedTitle: PinMatcher.normalizedTitle(title),
+    normalizedTitle: PinnedWindowMatcher.normalizedTitle(title),
     frame: frame,
     signature: nil,
     pinnedAt: Date()

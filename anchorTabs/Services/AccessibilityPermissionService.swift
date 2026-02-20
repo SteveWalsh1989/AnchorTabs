@@ -5,7 +5,7 @@ import Foundation
 
 // Wraps Accessibility trust checks, prompt requests, and settings deep-linking.
 @MainActor
-final class AccessibilityPermissionManager: ObservableObject {
+final class AccessibilityPermissionService: ObservableObject {
   @Published private(set) var isTrusted = AXIsProcessTrusted()
   private let promptOptionKey = "AXTrustedCheckOptionPrompt"
 

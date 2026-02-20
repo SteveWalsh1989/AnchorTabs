@@ -4,27 +4,27 @@ import Combine
 import CryptoKit
 import Foundation
 
-private let windowStoreAXObserverEventNotification = Notification.Name(
-  "AnchorTabs.WindowStoreAXObserverEvent"
+private let openWindowsStoreAXObserverEventNotification = Notification.Name(
+  "AnchorTabs.OpenWindowsStoreAXObserverEvent"
 )
 
-private let windowStoreAXObserverCallback: AXObserverCallback = { _, _, _, _ in
-  NotificationCenter.default.post(name: windowStoreAXObserverEventNotification, object: nil)
+private let openWindowsStoreAXObserverCallback: AXObserverCallback = { _, _, _, _ in
+  NotificationCenter.default.post(name: openWindowsStoreAXObserverEventNotification, object: nil)
 }
 
 // Enumerates AX windows, focuses windows, and tracks observer/polling diagnostics.
 @MainActor
-final class WindowStore: ObservableObject {
+final class OpenWindowsStore: ObservableObject {
   @Published private(set) var windows: [WindowSnapshot] = []
   @Published private(set) var focusedRuntimeID: String?
-  @Published private(set) var diagnostics = WindowStoreDiagnostics.empty
+  @Published private(set) var diagnostics = OpenWindowsStoreDiagnostics.empty
 
   private struct AXObserverRegistration {
     let observer: AXObserver
     let appElement: AXUIElement
   }
 
-  private let permissionManager: AccessibilityPermissionManager
+  private let permissionManager: AccessibilityPermissionService
   private let observerCapablePollingInterval: TimeInterval = 3.0
   private let fallbackPollingInterval: TimeInterval = 2.0
   private let observerRefreshDebounceInterval: TimeInterval = 0.4
@@ -52,7 +52,7 @@ final class WindowStore: ObservableObject {
   private var lastRefreshDurationMs: Double?
 
   // Injects the permission manager used for AX trust checks.
-  init(permissionManager: AccessibilityPermissionManager) {
+  init(permissionManager: AccessibilityPermissionService) {
     self.permissionManager = permissionManager
   }
 
@@ -60,7 +60,7 @@ final class WindowStore: ObservableObject {
   func startPolling() {
     stopPolling()
     startObserverNotifications()
-    refreshNow(reason: .startup)
+    refreshWindowsNow(reason: .startup)
     updatePollingTimerIfNeeded()
   }
 
@@ -96,11 +96,11 @@ final class WindowStore: ObservableObject {
   func resumeAutomaticRefreshing() {
     guard isAutomaticRefreshingPaused else { return }
     isAutomaticRefreshingPaused = false
-    refreshNow(reason: .manual)
+    refreshWindowsNow(reason: .manual)
   }
 
   // Refreshes open windows and updates diagnostics for the given trigger.
-  func refreshNow(reason: WindowRefreshReason = .manual) {
+  func refreshWindowsNow(reason: WindowRefreshReason = .manual) {
     let refreshStartedAt = Date()
     permissionManager.refreshStatus()
     guard permissionManager.isTrusted else {
@@ -139,7 +139,7 @@ final class WindowStore: ObservableObject {
   }
 
   // Activates and focuses a specific runtime window id.
-  func activateWindow(runtimeID: String) -> Bool {
+  func focusWindow(runtimeID: String) -> Bool {
     guard permissionManager.isTrusted else { return false }
     guard let snapshot = windows.first(where: { $0.id == runtimeID }) else { return false }
     guard let windowElement = handlesByRuntimeID[runtimeID] else { return false }
@@ -228,7 +228,7 @@ final class WindowStore: ObservableObject {
     guard !didStartObservers else { return }
     didStartObservers = true
 
-    NotificationCenter.default.publisher(for: windowStoreAXObserverEventNotification)
+    NotificationCenter.default.publisher(for: openWindowsStoreAXObserverEventNotification)
       .receive(on: DispatchQueue.main)
       .sink { [weak self] _ in
         self?.scheduleObserverRefresh()
@@ -251,7 +251,7 @@ final class WindowStore: ObservableObject {
         guard let self else { return }
         guard !self.isAutomaticRefreshingPaused else { return }
         Task { @MainActor in
-          self.refreshNow(reason: .workspaceLifecycle)
+          self.refreshWindowsNow(reason: .workspaceLifecycle)
         }
       }
       .store(in: &notificationCancellables)
@@ -278,7 +278,7 @@ final class WindowStore: ObservableObject {
     ) { [weak self] _ in
       guard let self else { return }
       Task { @MainActor in
-        self.refreshNow(reason: .observerEvent)
+        self.refreshWindowsNow(reason: .observerEvent)
       }
     }
     publishDiagnostics()
@@ -314,7 +314,7 @@ final class WindowStore: ObservableObject {
       [weak self] _ in
       guard let self else { return }
       Task { @MainActor in
-        self.refreshNow(reason: .polling)
+        self.refreshWindowsNow(reason: .polling)
       }
     }
     timer?.tolerance = min(0.5, desiredInterval * 0.25)
@@ -337,7 +337,7 @@ final class WindowStore: ObservableObject {
   // Registers AX notifications for one process id if supported.
   private func addAXObserver(for pid: pid_t) {
     var observer: AXObserver?
-    let createError = AXObserverCreate(pid, windowStoreAXObserverCallback, &observer)
+    let createError = AXObserverCreate(pid, openWindowsStoreAXObserverCallback, &observer)
     guard createError == .success, let observer else { return }
 
     let appElement = AXUIElementCreateApplication(pid)
@@ -688,7 +688,7 @@ final class WindowStore: ObservableObject {
 
   // Publishes the latest runtime diagnostics snapshot.
   private func publishDiagnostics() {
-    diagnostics = WindowStoreDiagnostics(
+    diagnostics = OpenWindowsStoreDiagnostics(
       isTrusted: permissionManager.isTrusted,
       observerRegistrationCount: observerRegistrationsByPID.count,
       activePollingInterval: activePollingInterval,

@@ -4,10 +4,10 @@ import SwiftUI
 
 // Persists pinned windows and reconciles them against current AX snapshots.
 @MainActor
-final class PinnedStore: ObservableObject {
+final class PinnedWindowsStore: ObservableObject {
   @Published private(set) var pinnedItems: [PinnedWindowItem] = []
   @Published private(set) var maxVisiblePinnedTabs = 10
-  @Published private(set) var diagnostics = PinnedStoreDiagnostics.empty
+  @Published private(set) var diagnostics = PinnedWindowsStoreDiagnostics.empty
 
   private var references: [PinnedWindowReference]
   private var lastSeenWindows: [WindowSnapshot] = []
@@ -40,7 +40,7 @@ final class PinnedStore: ObservableObject {
 
     for index in updatedReferences.indices {
       var reference = updatedReferences[index]
-      let match = PinMatcher.findBestMatch(
+      let match = PinnedWindowMatcher.findBestMatch(
         for: reference,
         in: windows,
         consumedWindowIDs: consumedWindowIDs
@@ -52,8 +52,8 @@ final class PinnedStore: ObservableObject {
         methodCounts[match.method, default: 0] += 1
         let storedTitle = canonicalStoredTitle(for: match.window)
         let storedAppName = canonicalStoredAppName(for: match.window)
-        let normalizedTitle = PinMatcher.normalizedTitle(match.window.title)
-        let signature = PinMatcher.signature(for: match.window)
+        let normalizedTitle = PinnedWindowMatcher.normalizedTitle(match.window.title)
+        let signature = PinnedWindowMatcher.signature(for: match.window)
         if reference.title != storedTitle
           || reference.appName != storedAppName
           || reference.windowNumber != match.window.windowNumber
@@ -93,7 +93,7 @@ final class PinnedStore: ObservableObject {
     if pinnedItems != newPinnedItems {
       pinnedItems = newPinnedItems
     }
-    diagnostics = PinnedStoreDiagnostics(
+    diagnostics = PinnedWindowsStoreDiagnostics(
       totalPins: updatedReferences.count,
       matchedPins: matchedPins,
       missingPins: max(0, updatedReferences.count - matchedPins),
@@ -120,9 +120,9 @@ final class PinnedStore: ObservableObject {
       role: window.role,
       subrole: window.subrole,
       customName: nil,
-      normalizedTitle: PinMatcher.normalizedTitle(window.title),
+      normalizedTitle: PinnedWindowMatcher.normalizedTitle(window.title),
       frame: window.frame,
-      signature: PinMatcher.signature(for: window),
+      signature: PinnedWindowMatcher.signature(for: window),
       pinnedAt: Date()
     )
     updateReferenceIdentity(&reference, from: window)
@@ -233,9 +233,9 @@ final class PinnedStore: ObservableObject {
     reference.lastKnownRuntimeID = window.id
     reference.role = window.role
     reference.subrole = window.subrole
-    reference.normalizedTitle = PinMatcher.normalizedTitle(window.title)
+    reference.normalizedTitle = PinnedWindowMatcher.normalizedTitle(window.title)
     reference.frame = window.frame
-    reference.signature = PinMatcher.signature(for: window)
+    reference.signature = PinnedWindowMatcher.signature(for: window)
   }
 
   // Finds an existing pin id for a live window using strict identities first.

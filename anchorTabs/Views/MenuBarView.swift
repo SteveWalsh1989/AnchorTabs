@@ -1,8 +1,8 @@
 import SwiftUI
 
 // Main menu bar strip UI with pinned tabs and one consolidated management menu.
-struct MenuBarStripView: View {
-  @ObservedObject var model: AppModel
+struct MenuBarView: View {
+  @ObservedObject var model: AnchorTabsModel
   private let launcherSectionWidth: CGFloat = 22
   private let launcherSectionTrailingPadding: CGFloat = 6
 
@@ -33,7 +33,7 @@ struct MenuBarStripView: View {
       launcherSection
     }
     .onDisappear {
-      model.setWindowManagerVisibility(false)
+      model.setWindowPopoverVisibility(false)
     }
     .frame(maxWidth: .infinity, alignment: .trailing)
     .padding(.vertical, 2)
@@ -131,9 +131,9 @@ struct MenuBarStripView: View {
 
   private var launcherSection: some View {
     Button {
-      model.toggleWindowManagerVisibility()
+      model.toggleWindowPopoverVisibility()
     } label: {
-      Image(systemName: "anchor")
+      Image(systemName: "pin")
     }
     .buttonStyle(.plain)
     .contentShape(Rectangle())
@@ -144,7 +144,7 @@ struct MenuBarStripView: View {
 
   // Tooltip text for pinned tabs, including missing-state guidance.
   private func pinnedTabButton(for pinnedItem: PinnedWindowItem) -> AnyView {
-    let tabKind: TabButtonStyle.Kind
+    let tabKind: MenuBarTabButtonStyle.Kind
     if pinnedItem.isMissing {
       tabKind = .missing
     } else if model.isPinnedItemFocused(pinnedItem) {
@@ -162,7 +162,7 @@ struct MenuBarStripView: View {
           .fixedSize(horizontal: true, vertical: false)
       }
       .buttonStyle(
-        TabButtonStyle(
+        MenuBarTabButtonStyle(
           tabKind,
           minWidth: model.menuPinnedItemMinWidth,
           showsMissingUnderline: model.highlightMissingPins,
@@ -272,7 +272,7 @@ struct MenuBarStripView: View {
 }
 
 // Shared tab visual styling for active and missing pinned items.
-private struct TabButtonStyle: ButtonStyle {
+private struct MenuBarTabButtonStyle: ButtonStyle {
   enum Kind {
     case active
     case focused
