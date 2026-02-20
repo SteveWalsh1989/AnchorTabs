@@ -13,7 +13,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
   private let compactMinimumLength: CGFloat = 18
   private let lengthPadding: CGFloat = 10
   private let compactLengthPadding: CGFloat = 0
-  private let launcherSectionWidth: CGFloat = 22
+  private let launcherSectionWidth: CGFloat = 30
   private let launcherSectionTrailingPadding: CGFloat = 6
   private let lengthChangeThreshold: CGFloat = 1
   private let lengthUpdateDebounceMs = 100

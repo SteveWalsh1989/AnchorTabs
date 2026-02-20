@@ -40,7 +40,7 @@ struct WindowPopoverView: View {
             .font(.headline)
             .lineLimit(1)
             .truncationMode(.tail)
-            .padding(.leading, 44)
+            .padding(.leading, 8)
           Spacer()
           hidePinnedItemsButton
           refreshButton

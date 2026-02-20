@@ -3,7 +3,7 @@ import SwiftUI
 // Main menu bar strip UI with pinned tabs and one consolidated management menu.
 struct MenuBarView: View {
   @ObservedObject var model: AnchorTabsModel
-  private let launcherSectionWidth: CGFloat = 22
+  private let launcherSectionWidth: CGFloat = 30
   private let launcherSectionTrailingPadding: CGFloat = 6
 
   private var shouldShowPinnedItems: Bool {
@@ -134,11 +134,12 @@ struct MenuBarView: View {
       model.toggleWindowPopoverVisibility()
     } label: {
       Image(systemName: "pin")
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
     .buttonStyle(.plain)
+    .frame(width: launcherSectionWidth, height: 20, alignment: .center)
     .contentShape(Rectangle())
     .help("Open window manager")
-    .frame(width: launcherSectionWidth, alignment: .center)
     .padding(.trailing, launcherSectionTrailingPadding)
   }
 
