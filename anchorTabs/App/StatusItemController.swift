@@ -37,7 +37,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     windowPopover.behavior = .transient
     windowPopover.animates = false
     windowPopover.delegate = self
-    windowPopover.contentSize = NSSize(width: 400, height: 430)
+    windowPopover.contentSize = NSSize(width: 340, height: 430)
   }
 
   // Installs the SwiftUI host as the status bar button content view.

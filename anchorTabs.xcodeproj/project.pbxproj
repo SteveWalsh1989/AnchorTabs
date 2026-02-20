@@ -6,20 +6,30 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		9A1C0F642F50000100CCD623 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2C80854C2F430FD100CCD623 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2C8085532F430FD100CCD623;
+			remoteInfo = anchorTabs;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		2C8085542F430FD100CCD623 /* anchorTabs.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "anchorTabs.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		9A1C0F5A2F50000100CCD623 /* anchorTabsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "anchorTabsTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C8085542F430FD100CCD623 /* anchorTabs.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = anchorTabs.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A1C0F5A2F50000100CCD623 /* anchorTabsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = anchorTabsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2C8085562F430FD100CCD623 /* anchorTabs */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "anchorTabs";
+			path = anchorTabs;
 			sourceTree = "<group>";
 		};
 		9A1C0F5B2F50000100CCD623 /* anchorTabsTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "anchorTabsTests";
+			path = anchorTabsTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -78,10 +88,10 @@
 			fileSystemSynchronizedGroups = (
 				2C8085562F430FD100CCD623 /* anchorTabs */,
 			);
-			name = "anchorTabs";
+			name = anchorTabs;
 			packageProductDependencies = (
 			);
-			productName = "anchorTabs";
+			productName = anchorTabs;
 			productReference = 2C8085542F430FD100CCD623 /* anchorTabs.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -101,10 +111,10 @@
 			fileSystemSynchronizedGroups = (
 				9A1C0F5B2F50000100CCD623 /* anchorTabsTests */,
 			);
-			name = "anchorTabsTests";
+			name = anchorTabsTests;
 			packageProductDependencies = (
 			);
-			productName = "anchorTabsTests";
+			productName = anchorTabsTests;
 			productReference = 9A1C0F5A2F50000100CCD623 /* anchorTabsTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
@@ -180,16 +190,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXContainerItemProxy section */
-		9A1C0F642F50000100CCD623 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2C80854C2F430FD100CCD623 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 2C8085532F430FD100CCD623;
-			remoteInfo = "anchorTabs";
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXTargetDependency section */
 		9A1C0F632F50000100CCD623 /* PBXTargetDependency */ = {
@@ -417,7 +417,7 @@
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_VERSION = 6.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/anchorTabs.app/Contents/MacOS/anchorTabs";
-				TEST_TARGET_NAME = "anchorTabs";
+				TEST_TARGET_NAME = anchorTabs;
 			};
 			name = Debug;
 		};
@@ -436,7 +436,7 @@
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_VERSION = 6.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/anchorTabs.app/Contents/MacOS/anchorTabs";
-				TEST_TARGET_NAME = "anchorTabs";
+				TEST_TARGET_NAME = anchorTabs;
 			};
 			name = Release;
 		};
