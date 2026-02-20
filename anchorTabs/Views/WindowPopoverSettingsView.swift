@@ -7,75 +7,43 @@ struct WindowPopoverSettingsView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
-      settingRow(
-        title: "Spacing",
-        description: "Gap before the gear icon."
-      ) {
+      settingRow(title: "Spacing") {
         numberInputControl(value: $model.menuTrailingSpacing, range: AnchorTabsModel.menuTrailingSpacingRange)
       }
-      settingRow(
-        title: "Pinned Item Min Width",
-        description: "Minimum tab width."
-      ) {
+      settingRow(title: "Pinned Item Min Width") {
         numberInputControl(
           value: $model.menuPinnedItemMinWidth,
           range: AnchorTabsModel.menuPinnedItemMinWidthRange
         )
       }
-      settingRow(
-        title: "Highlight missing pinned windows",
-        description: "Red underline when missing."
-      ) {
+      settingRow(title: "Highlight missing pinned windows") {
         checkboxControl(isOn: $model.highlightMissingPins)
       }
-      settingRow(
-        title: "Highlight focused window",
-        description: "Purple underline for active tab."
-      ) {
+      settingRow(title: "Highlight focused window") {
         checkboxControl(isOn: $model.highlightFocusedWindow)
       }
 
-      LazyVGrid(
-        columns: [
-          GridItem(.flexible(), spacing: 8),
-          GridItem(.flexible(), spacing: 8),
-        ],
-        spacing: 10
-      ) {
-        settingsActionButton("Refresh Open Windows") {
-          model.refreshWindowsNow()
-        }
-
-        settingsActionButton("Restart Window Polling") {
-          model.resetAccessibilitySession()
-        }
-
+      VStack(spacing: 10) {
         settingsActionButton("Accessibility Settings…") {
           model.openAccessibilitySettings()
         }
 
-        settingsActionButton("Copy Diagnostics") {
-          model.copyDiagnosticsToPasteboard()
+        settingsActionButton("Reset All Settings") {
+          model.resetMenuLayoutSettingsToDefaults()
+        }
+
+        if !model.isAccessibilityTrusted {
+          settingsActionButton("Enable Accessibility Access") {
+            model.requestAccessibilityPermission()
+          }
         }
       }
       .font(.system(size: 12))
 
-      if !model.isAccessibilityTrusted {
-        Button("Enable Accessibility Access") {
-          model.requestAccessibilityPermission()
-        }
-        .font(.system(size: 12))
-      }
-
       Divider()
 
-      HStack(spacing: 8) {
-        settingsActionButton("Reset All Settings") {
-          model.resetMenuLayoutSettingsToDefaults()
-        }
-        settingsActionButton("Quit AnchorTabs") {
-          NSApplication.shared.terminate(nil)
-        }
+      settingsActionButton("Quit AnchorTabs") {
+        NSApplication.shared.terminate(nil)
       }
       .font(.system(size: 12))
     }
@@ -83,17 +51,11 @@ struct WindowPopoverSettingsView: View {
 
   private func settingRow<Control: View>(
     title: String,
-    description: String,
     @ViewBuilder control: () -> Control
   ) -> some View {
-    HStack(alignment: .top, spacing: 10) {
-      VStack(alignment: .leading, spacing: 1) {
-        Text(title)
-          .font(.system(size: 12, weight: .semibold))
-        Text(description)
-          .font(.system(size: 11))
-          .foregroundStyle(.secondary)
-      }
+    HStack(alignment: .center, spacing: 10) {
+      Text(title)
+        .font(.system(size: 12, weight: .semibold))
       Spacer(minLength: 8)
       control()
     }

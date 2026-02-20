@@ -8,7 +8,7 @@ struct WindowPopoverView: View {
   @State private var isShowingLayoutSettings = false
   private let accessibilityStateRefreshTimer = Timer.publish(every: 1.0, on: .main, in: .common)
     .autoconnect()
-  private let popoverWidth: CGFloat = 340
+  private let popoverWidth: CGFloat = 300
   private let noAccessibilityPopoverHeight: CGFloat = 170
   private let settingsPopoverHeight: CGFloat = 430
   private let openWindowsRowsBeforeScroll = 8
