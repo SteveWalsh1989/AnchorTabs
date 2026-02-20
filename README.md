@@ -13,12 +13,6 @@ Popover for pinning items | additional settings
 ---|---
 <img width="414" height="428" alt="image" src="https://github.com/user-attachments/assets/2405f666-3c84-4182-b68a-1cf3b6312eeb" /> | <img width="419" height="425" alt="image" src="https://github.com/user-attachments/assets/796a0d29-617e-41d7-a1f6-2481bf48fb6b" />
 
-
-## Why make it
-- Personally I never found the ALT TAB or ALT SHIFT TAB or swipe up to be a good way of switching for active windows, especially if just switching often between a few of the opened windows
-- This allows you to select a few windows for quick access on the menu bar, this means no more leaving a small section overlapping or having windows different heights to try move quickly or using swipe and then figuring out which window is which.
-- You can add spacing so can position to the center of the screen, great for ultrawide monitors
-
 ## Features
 
 - Menu bar app (`LSUIElement`) with no Dock icon.
@@ -132,4 +126,23 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
 - No network dependency for core behavior.
 - Pinned metadata, labels, and settings are stored locally in `UserDefaults`.
+
+
+## FAQ
+
+#### Why make it
+- Personally I never found the ALT TAB or ALT SHIFT TAB or swipe up to be a good way of switching for active windows, especially if just switching often between a few of the opened windows
+- This allows you to select a few windows for quick access on the menu bar, this means no more leaving a small section overlapping or having windows different heights to try move quickly or using swipe and then figuring out which window is which.
+- You can add spacing so can position to the center of the screen, great for ultrawide monitors
+
+#### Why is it not on app store
+- I built this for myself as I use an ultrawide and this solves a workflow annoyance of mine but i wanted to share incase others find it useless but I don't want to pay to put it on the app store or have to conform to all of Apples requirements for apps there.
+
+#### Are there going to be updates/ bug fixes
+- Will depend on what issues might arise. Im not committing to making any updates
+
+#### Are there known issues
+- Yes, changing the spacing sometimes moves the popover around
+- It wont refresh when popover is open, there is manual button for it though as the auto refresh looked glitchy
+- For single instance windows, they often show when changing mac window if you use muttiple workspaces. Thats why there is a show/hide option on the popover 
 
