@@ -267,7 +267,7 @@ struct WindowManagerPopoverView: View {
 
   private var openWindowsSection: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text("Click a window name to focus it. Use the pin icon to keep it in your strip.")
+      Text("Click a window name to focus it. Use the anchor icon to keep it in your strip.")
         .font(.caption)
         .foregroundStyle(.secondary)
 
@@ -405,7 +405,7 @@ private struct WindowManagerWindowRow: View {
       Button {
         onTogglePin()
       } label: {
-        Image(systemName: isPinned ? "pin.fill" : "pin")
+        Image(systemName: "anchor")
       }
       .buttonStyle(.plain)
       .foregroundStyle(isPinned ? Color.accentColor : Color.secondary)

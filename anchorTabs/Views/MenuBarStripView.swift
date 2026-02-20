@@ -133,7 +133,7 @@ struct MenuBarStripView: View {
     Button {
       model.toggleWindowManagerVisibility()
     } label: {
-      Image(systemName: "pin.fill")
+      Image(systemName: "anchor")
     }
     .buttonStyle(.plain)
     .contentShape(Rectangle())
