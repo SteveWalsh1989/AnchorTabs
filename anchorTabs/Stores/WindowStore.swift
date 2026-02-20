@@ -5,7 +5,7 @@ import CryptoKit
 import Foundation
 
 private let windowStoreAXObserverEventNotification = Notification.Name(
-  "ToolbarHelper.WindowStoreAXObserverEvent"
+  "AnchorTabs.WindowStoreAXObserverEvent"
 )
 
 private let windowStoreAXObserverCallback: AXObserverCallback = { _, _, _, _ in
@@ -213,7 +213,7 @@ final class WindowStore: ObservableObject {
     return (snapshots, handles)
   }
 
-  // Filters to regular, non-terminated apps other than Toolbar Helper.
+  // Filters to regular, non-terminated apps other than AnchorTabs.
   private func eligibleRunningApps() -> [NSRunningApplication] {
     NSWorkspace.shared.runningApplications.filter {
       $0.activationPolicy == .regular

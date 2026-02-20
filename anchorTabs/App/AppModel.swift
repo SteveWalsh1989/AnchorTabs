@@ -196,7 +196,7 @@ final class AppModel: ObservableObject {
   // Builds a copyable diagnostics report for bug triage.
   func diagnosticsReport() -> String {
     var lines: [String] = []
-    lines.append("Toolbar Helper Diagnostics")
+    lines.append("AnchorTabs Diagnostics")
     lines.append("AX Trusted: \(windowDiagnostics.isTrusted ? "Yes" : "No")")
     lines.append("Open Windows: \(windowDiagnostics.windowCount)")
     lines.append("Pinned Items: \(pinnedDiagnostics.totalPins)")

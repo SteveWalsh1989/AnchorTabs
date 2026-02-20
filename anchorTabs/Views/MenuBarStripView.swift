@@ -10,8 +10,20 @@ struct MenuBarStripView: View {
     model.isAccessibilityTrusted && !model.hidesPinnedItemsInMenuBar
   }
 
+  private var hasPinnedTabContent: Bool {
+    !model.visiblePinnedItems.isEmpty || !model.overflowPinnedItems.isEmpty
+  }
+
   private var effectiveTrailingSpacing: Double {
-    shouldShowPinnedItems ? model.menuTrailingSpacing : 0
+    shouldShowPinnedItems && hasPinnedTabContent ? model.menuTrailingSpacing : 0
+  }
+
+  private var pinnedItemsLeadingPadding: Double {
+    guard !model.hidesPinnedItemsInMenuBar else { return 0 }
+    if model.isAccessibilityTrusted {
+      return hasPinnedTabContent ? 6 : 0
+    }
+    return 6
   }
 
   // Renders pinned tabs plus one consolidated settings/menu button.
@@ -35,11 +47,7 @@ struct MenuBarStripView: View {
     HStack(spacing: 6) {
       if !model.hidesPinnedItemsInMenuBar {
         if model.isAccessibilityTrusted {
-          if model.visiblePinnedItems.isEmpty {
-            Text("No Pins")
-              .font(.system(size: 11, weight: .medium))
-              .foregroundStyle(.secondary)
-          } else {
+          if !model.visiblePinnedItems.isEmpty {
             ForEach(model.visiblePinnedItems, id: \.id) { pinnedItem in
               pinnedTabButton(for: pinnedItem)
             }
@@ -112,7 +120,7 @@ struct MenuBarStripView: View {
       }
     }
     .frame(maxWidth: .infinity, alignment: .trailing)
-    .padding(.leading, model.hidesPinnedItemsInMenuBar ? 0 : 6)
+    .padding(.leading, pinnedItemsLeadingPadding)
   }
 
   private var launcherSection: some View {

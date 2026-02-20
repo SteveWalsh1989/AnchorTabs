@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2C8085532F430FD100CCD623"
-               BuildableName = "toolbar-helper.app"
-               BlueprintName = "toolbar-helper"
-               ReferencedContainer = "container:toolbar-helper.xcodeproj">
+               BuildableName = "anchorTabs.app"
+               BlueprintName = "anchorTabs"
+               ReferencedContainer = "container:anchorTabs.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -30,9 +30,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "9A1C0F5F2F50000100CCD623"
-               BuildableName = "toolbar-helperTests.xctest"
-               BlueprintName = "toolbar-helperTests"
-               ReferencedContainer = "container:toolbar-helper.xcodeproj">
+               BuildableName = "anchorTabsTests.xctest"
+               BlueprintName = "anchorTabsTests"
+               ReferencedContainer = "container:anchorTabs.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -47,9 +47,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2C8085532F430FD100CCD623"
-            BuildableName = "toolbar-helper.app"
-            BlueprintName = "toolbar-helper"
-            ReferencedContainer = "container:toolbar-helper.xcodeproj">
+            BuildableName = "anchorTabs.app"
+            BlueprintName = "anchorTabs"
+            ReferencedContainer = "container:anchorTabs.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -59,9 +59,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "9A1C0F5F2F50000100CCD623"
-               BuildableName = "toolbar-helperTests.xctest"
-               BlueprintName = "toolbar-helperTests"
-               ReferencedContainer = "container:toolbar-helper.xcodeproj">
+               BuildableName = "anchorTabsTests.xctest"
+               BlueprintName = "anchorTabsTests"
+               ReferencedContainer = "container:anchorTabs.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -81,9 +81,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2C8085532F430FD100CCD623"
-            BuildableName = "toolbar-helper.app"
-            BlueprintName = "toolbar-helper"
-            ReferencedContainer = "container:toolbar-helper.xcodeproj">
+            BuildableName = "anchorTabs.app"
+            BlueprintName = "anchorTabs"
+            ReferencedContainer = "container:anchorTabs.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -98,9 +98,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2C8085532F430FD100CCD623"
-            BuildableName = "toolbar-helper.app"
-            BlueprintName = "toolbar-helper"
-            ReferencedContainer = "container:toolbar-helper.xcodeproj">
+            BuildableName = "anchorTabs.app"
+            BlueprintName = "anchorTabs"
+            ReferencedContainer = "container:anchorTabs.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

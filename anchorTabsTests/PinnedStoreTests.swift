@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 
-@testable import toolbar_helper
+@testable import anchorTabs
 
 @MainActor
 final class PinnedStoreTests: XCTestCase {

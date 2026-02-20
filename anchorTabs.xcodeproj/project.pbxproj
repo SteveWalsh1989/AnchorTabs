@@ -7,19 +7,19 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		2C8085542F430FD100CCD623 /* toolbar-helper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "toolbar-helper.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		9A1C0F5A2F50000100CCD623 /* toolbar-helperTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "toolbar-helperTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C8085542F430FD100CCD623 /* anchorTabs.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "anchorTabs.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A1C0F5A2F50000100CCD623 /* anchorTabsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "anchorTabsTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		2C8085562F430FD100CCD623 /* toolbar-helper */ = {
+		2C8085562F430FD100CCD623 /* anchorTabs */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "toolbar-helper";
+			path = "anchorTabs";
 			sourceTree = "<group>";
 		};
-		9A1C0F5B2F50000100CCD623 /* toolbar-helperTests */ = {
+		9A1C0F5B2F50000100CCD623 /* anchorTabsTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "toolbar-helperTests";
+			path = "anchorTabsTests";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -45,8 +45,8 @@
 		2C80854B2F430FD100CCD623 = {
 			isa = PBXGroup;
 			children = (
-				2C8085562F430FD100CCD623 /* toolbar-helper */,
-				9A1C0F5B2F50000100CCD623 /* toolbar-helperTests */,
+				2C8085562F430FD100CCD623 /* anchorTabs */,
+				9A1C0F5B2F50000100CCD623 /* anchorTabsTests */,
 				2C8085552F430FD100CCD623 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,8 +54,8 @@
 		2C8085552F430FD100CCD623 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				2C8085542F430FD100CCD623 /* toolbar-helper.app */,
-				9A1C0F5A2F50000100CCD623 /* toolbar-helperTests.xctest */,
+				2C8085542F430FD100CCD623 /* anchorTabs.app */,
+				9A1C0F5A2F50000100CCD623 /* anchorTabsTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -63,9 +63,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		2C8085532F430FD100CCD623 /* toolbar-helper */ = {
+		2C8085532F430FD100CCD623 /* anchorTabs */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2C80855F2F430FD300CCD623 /* Build configuration list for PBXNativeTarget "toolbar-helper" */;
+			buildConfigurationList = 2C80855F2F430FD300CCD623 /* Build configuration list for PBXNativeTarget "anchorTabs" */;
 			buildPhases = (
 				2C8085502F430FD100CCD623 /* Sources */,
 				2C8085512F430FD100CCD623 /* Frameworks */,
@@ -76,18 +76,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				2C8085562F430FD100CCD623 /* toolbar-helper */,
+				2C8085562F430FD100CCD623 /* anchorTabs */,
 			);
-			name = "toolbar-helper";
+			name = "anchorTabs";
 			packageProductDependencies = (
 			);
-			productName = "toolbar-helper";
-			productReference = 2C8085542F430FD100CCD623 /* toolbar-helper.app */;
+			productName = "anchorTabs";
+			productReference = 2C8085542F430FD100CCD623 /* anchorTabs.app */;
 			productType = "com.apple.product-type.application";
 		};
-		9A1C0F5F2F50000100CCD623 /* toolbar-helperTests */ = {
+		9A1C0F5F2F50000100CCD623 /* anchorTabsTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9A1C0F602F50000100CCD623 /* Build configuration list for PBXNativeTarget "toolbar-helperTests" */;
+			buildConfigurationList = 9A1C0F602F50000100CCD623 /* Build configuration list for PBXNativeTarget "anchorTabsTests" */;
 			buildPhases = (
 				9A1C0F5E2F50000100CCD623 /* Sources */,
 				9A1C0F5C2F50000100CCD623 /* Frameworks */,
@@ -99,13 +99,13 @@
 				9A1C0F632F50000100CCD623 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				9A1C0F5B2F50000100CCD623 /* toolbar-helperTests */,
+				9A1C0F5B2F50000100CCD623 /* anchorTabsTests */,
 			);
-			name = "toolbar-helperTests";
+			name = "anchorTabsTests";
 			packageProductDependencies = (
 			);
-			productName = "toolbar-helperTests";
-			productReference = 9A1C0F5A2F50000100CCD623 /* toolbar-helperTests.xctest */;
+			productName = "anchorTabsTests";
+			productReference = 9A1C0F5A2F50000100CCD623 /* anchorTabsTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -127,7 +127,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 2C80854F2F430FD100CCD623 /* Build configuration list for PBXProject "toolbar-helper" */;
+			buildConfigurationList = 2C80854F2F430FD100CCD623 /* Build configuration list for PBXProject "anchorTabs" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -141,8 +141,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				2C8085532F430FD100CCD623 /* toolbar-helper */,
-				9A1C0F5F2F50000100CCD623 /* toolbar-helperTests */,
+				2C8085532F430FD100CCD623 /* anchorTabs */,
+				9A1C0F5F2F50000100CCD623 /* anchorTabsTests */,
 			);
 		};
 /* End PBXProject section */
@@ -187,14 +187,14 @@
 			containerPortal = 2C80854C2F430FD100CCD623 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 2C8085532F430FD100CCD623;
-			remoteInfo = "toolbar-helper";
+			remoteInfo = "anchorTabs";
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXTargetDependency section */
 		9A1C0F632F50000100CCD623 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 2C8085532F430FD100CCD623 /* toolbar-helper */;
+			target = 2C8085532F430FD100CCD623 /* anchorTabs */;
 			targetProxy = 9A1C0F642F50000100CCD623 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -341,7 +341,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.stevewalsh.ToolbarHelper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stevewalsh.AnchorTabs;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -385,7 +385,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.stevewalsh.ToolbarHelper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stevewalsh.AnchorTabs;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -411,13 +411,13 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.stevewalsh.ToolbarHelperTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stevewalsh.AnchorTabsTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_VERSION = 6.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/toolbar-helper.app/Contents/MacOS/toolbar-helper";
-				TEST_TARGET_NAME = "toolbar-helper";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/anchorTabs.app/Contents/MacOS/anchorTabs";
+				TEST_TARGET_NAME = "anchorTabs";
 			};
 			name = Debug;
 		};
@@ -430,20 +430,20 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.stevewalsh.ToolbarHelperTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stevewalsh.AnchorTabsTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_VERSION = 6.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/toolbar-helper.app/Contents/MacOS/toolbar-helper";
-				TEST_TARGET_NAME = "toolbar-helper";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/anchorTabs.app/Contents/MacOS/anchorTabs";
+				TEST_TARGET_NAME = "anchorTabs";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		2C80854F2F430FD100CCD623 /* Build configuration list for PBXProject "toolbar-helper" */ = {
+		2C80854F2F430FD100CCD623 /* Build configuration list for PBXProject "anchorTabs" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2C80855D2F430FD300CCD623 /* Debug */,
@@ -452,7 +452,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2C80855F2F430FD300CCD623 /* Build configuration list for PBXNativeTarget "toolbar-helper" */ = {
+		2C80855F2F430FD300CCD623 /* Build configuration list for PBXNativeTarget "anchorTabs" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2C8085602F430FD300CCD623 /* Debug */,
@@ -461,7 +461,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9A1C0F602F50000100CCD623 /* Build configuration list for PBXNativeTarget "toolbar-helperTests" */ = {
+		9A1C0F602F50000100CCD623 /* Build configuration list for PBXNativeTarget "anchorTabsTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9A1C0F612F50000100CCD623 /* Debug */,

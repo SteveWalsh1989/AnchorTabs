@@ -7,7 +7,7 @@ struct SettingsView: View {
   // Shows current Accessibility state and quick settings shortcuts.
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text("Toolbar Helper")
+      Text("AnchorTabs")
         .font(.title3.weight(.semibold))
 
       Text(

@@ -39,8 +39,8 @@ Right-click any pinned tab to:
 
 ### Xcode
 
-1. Open `toolbar-helper.xcodeproj`.
-2. Select scheme `toolbar-helper`.
+1. Open `anchorTabs.xcodeproj`.
+2. Select scheme `anchorTabs`.
 3. Run on `My Mac`.
 
 ### CLI
@@ -48,8 +48,8 @@ Right-click any pinned tab to:
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild \
-  -project toolbar-helper.xcodeproj \
-  -scheme toolbar-helper \
+  -project anchorTabs.xcodeproj \
+  -scheme anchorTabs \
   -configuration Debug \
   -destination 'platform=macOS' \
   build
@@ -61,7 +61,7 @@ AnchorTabs requires Accessibility permission to enumerate and focus windows.
 
 1. Launch AnchorTabs.
 2. Open macOS System Settings -> Privacy & Security -> Accessibility.
-3. Enable `com.stevewalsh.ToolbarHelper`.
+3. Enable `com.stevewalsh.AnchorTabs`.
 4. If needed, use app actions:
    - `Open Accessibility Settings...`
    - `Enable Accessibility Access`
@@ -86,7 +86,7 @@ AnchorTabs requires Accessibility permission to enumerate and focus windows.
 - If required, reset and re-grant permission:
 
 ```bash
-tccutil reset Accessibility com.stevewalsh.ToolbarHelper
+tccutil reset Accessibility com.stevewalsh.AnchorTabs
 ```
 
 ### `xcodebuild` points to CommandLineTools
@@ -105,13 +105,13 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
 ## Project Structure
 
-- `toolbar-helper/App/` app lifecycle, orchestration, and status item host
-- `toolbar-helper/Views/` menu bar strip and popover UI
-- `toolbar-helper/Stores/` window enumeration/focus, pin persistence, and matching
-- `toolbar-helper/Services/` accessibility permission integration
-- `toolbar-helper/Models/` window and diagnostics models
-- `toolbar-helper/Utilities/` string normalization and matching helpers
-- `toolbar-helperTests/` pin matching and store behavior tests
+- `anchorTabs/App/` app lifecycle, orchestration, and status item host
+- `anchorTabs/Views/` menu bar strip and popover UI
+- `anchorTabs/Stores/` window enumeration/focus, pin persistence, and matching
+- `anchorTabs/Services/` accessibility permission integration
+- `anchorTabs/Models/` window and diagnostics models
+- `anchorTabs/Utilities/` string normalization and matching helpers
+- `anchorTabsTests/` pin matching and store behavior tests
 
 ## Privacy
 
@@ -121,5 +121,5 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 ## Naming Notes
 
 - Product name: `AnchorTabs`
-- Target/scheme/repo folder currently: `toolbar-helper`
-- Bundle identifier: `com.stevewalsh.ToolbarHelper`
+- Target/scheme/source folders: `anchorTabs`
+- Bundle identifier: `com.stevewalsh.AnchorTabs`
