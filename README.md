@@ -2,7 +2,9 @@
 
 AnchorTabs is a macOS menu bar app for pinning specific windows and restoring the exact window with one click.
 
-It is designed for heavy multi-window workflows (for example, multiple Cursor workspaces or multiple Chrome windows) to easily ping, rename, and select opened windows.
+It is designed for heavy multi-window workflows (for example, multiple Cursor workspaces or multiple Chrome windows) to easily pin, rename, and select opened windows to avoid needing to swipe up or use the ALT TAB and go through a list of applications you dont need to cycle through
+
+This app was built using the assistance of AI, specifically Codex. 
 
 
 #### How pinned items can appear on the menubar
@@ -19,17 +21,6 @@ Popover for pinning items | additional settings
 - Per-window pinning, including multiple windows from the same app.
 - Open windows manager popover with focus, pin/unpin, and rename actions.
 - Drag-and-drop pin reordering plus overflow menu for tabs beyond the visible limit.
-- Missing-window handling for closed or unmatched pinned windows.
-- Local persistence for pins, custom names, and UI settings (`UserDefaults`).
-
-### Robust Window Mapping
-
-The app now uses stricter mapping rules so pins do not silently jump to the wrong window:
-
-- Uses `AXWindowNumber` when available.
-- For windows without `AXWindowNumber`, reuses runtime IDs by matching the underlying `AXUIElement`.
-- Generates unique runtime IDs for newly seen no-number windows.
-- Treats ambiguous matches as missing instead of auto-remapping to a potentially wrong window.
 
 ### Pinned Tab Context Menu
 
