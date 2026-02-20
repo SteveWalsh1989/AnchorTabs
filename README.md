@@ -2,7 +2,11 @@
 
 AnchorTabs is a macOS menu bar app for pinning specific windows and restoring the exact window with one click.
 
-It is designed for heavy multi-window workflows (for example, multiple Cursor workspaces or multiple Chrome windows) where normal app switching is not precise enough.
+It is designed for heavy multi-window workflows (for example, multiple Cursor workspaces or multiple Chrome windows) to easily ping, rename, and select opened windows.
+
+## Why make it
+- Personally I never found the ALT TAB or ALT SHIFT TAB or swipe up to be a good way of switching for active windows, especially if just switching often between a few of the opened windows
+- This allows you to select a few windows for quick access at the top, this means no more leaving a small section overlapping or having windows different heights to try move quickly or using swipe and then figuring out which window is which. 
 
 ## Features
 
