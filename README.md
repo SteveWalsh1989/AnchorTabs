@@ -1,76 +1,47 @@
 # AnchorTabs (macOS)
 
-AnchorTabs is a macOS menu bar app for pinning and restoring specific windows to allow to quickly bring a window to the front. 
+AnchorTabs is a macOS menu bar app for pinning specific windows and restoring the exact window with one click.
 
+It is designed for heavy multi-window workflows (for example, multiple Cursor workspaces or multiple Chrome windows) where normal app switching is not precise enough.
 
+## Features
 
-## Current Features
-It runs as an `NSStatusItem` app (`LSUIElement`), supports multiple windows from the same app, and lets you jump back to exact windows with one click.
+- Menu bar app (`LSUIElement`) with no Dock icon.
+- Per-window pinning, including multiple windows from the same app.
+- Open windows manager popover with focus, pin/unpin, and rename actions.
+- Drag-and-drop pin reordering plus overflow menu for tabs beyond the visible limit.
+- Missing-window handling for closed or unmatched pinned windows.
+- Local persistence for pins, custom names, and UI settings (`UserDefaults`).
 
+### Robust Window Mapping
 
-- Menu bar app with no Dock presence.
-- Per-window pinning with support for multiple windows from the same app.
-- Open Windows popover with pin/focus controls.
-- Row-level controls for pin/unpin and rename pinned labels.
-- Pinned tab click restores exact window focus by:
-  - activating the app
-  - unminimizing the window
-  - raising/focusing the target window
-- Drag-and-drop reorder for visible pinned tabs.
-- Overflow menu for pinned tabs beyond visible capacity (default visible max: 10).
-- Missing-window state for closed/unmatched pins.
-- Diagnostics copy action in the popover's `More` menu.
-- Persistent pins and custom names via `UserDefaults`.
-- Accessibility implementation uses public AX APIs only.
+The app now uses stricter mapping rules so pins do not silently jump to the wrong window:
 
-## UI Notes
+- Uses `AXWindowNumber` when available.
+- For windows without `AXWindowNumber`, reuses runtime IDs by matching the underlying `AXUIElement`.
+- Generates unique runtime IDs for newly seen no-number windows.
+- Treats ambiguous matches as missing instead of auto-remapping to a potentially wrong window.
 
-- Main management entry is a single gear icon that opens the window manager popover.
-- The orange Accessibility warning icon is clickable and opens macOS Accessibility settings directly.
-- The popover includes a `More` menu for refresh, restart polling, accessibility actions, and diagnostics copy.
+### Pinned Tab Context Menu
 
-## Tech Stack
+Right-click any pinned tab to:
 
-- Swift 6 + SwiftUI
-- AppKit status item hosting
-- Accessibility APIs (`AXUIElement`, `AXObserver`)
-- `UserDefaults` for persistence
-
-## Project Structure
-
-- `toolbar-helper/App/`
-  - `ToolbarHelperApp.swift` (app entry)
-  - `AppDelegate.swift` (startup/lifecycle)
-  - `AppModel.swift` (app-level orchestration)
-  - `StatusBarController.swift` (status-item host)
-- `toolbar-helper/Views/`
-  - `MenuBarStripView.swift` (menu bar UI/actions)
-  - `WindowManagerPopoverView.swift` (open windows popover UI)
-  - `SettingsView.swift` (settings scene)
-- `toolbar-helper/Stores/`
-  - `WindowStore.swift` (AX enumeration/focus/observer polling)
-  - `PinnedStore.swift` (pin persistence/reconciliation)
-  - `PinMatcher.swift` (matching strategy/scoring)
-- `toolbar-helper/Services/`
-  - `AccessibilityPermissionManager.swift` (AX trust/prompt/settings)
-- `toolbar-helper/Models/`
-  - `Models.swift` (window/pin models)
-  - `DiagnosticsModels.swift` (diagnostic model types)
-- `toolbar-helper/Utilities/`
-  - `StringExtensions.swift` (matching helpers)
+- See the current mapped window.
+- Reassign the pin to another open window from the same app (`Reassign Window`).
+- Keep the existing custom pin name while updating the underlying window identity.
 
 ## Requirements
 
-- macOS (latest recommended)
-- Xcode 26.2+ (Swift 6 toolchain)
+- macOS
+- Xcode with Swift 6 support
 
 ## Build and Run
 
 ### Xcode
 
-1. Open `toolbar-helper.xcodeproj`
-2. Select scheme `toolbar-helper`
-3. Run on `My Mac`
+1. Open `toolbar-helper.xcodeproj`.
+2. Select scheme `toolbar-helper`.
+3. Run on `My Mac`.
 
 ### CLI
 
@@ -81,58 +52,74 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   -scheme toolbar-helper \
   -configuration Debug \
   -destination 'platform=macOS' \
-  -derivedDataPath .DerivedData \
   build
 ```
 
 ## Accessibility Setup
 
+AnchorTabs requires Accessibility permission to enumerate and focus windows.
+
 1. Launch AnchorTabs.
-2. Click the orange warning icon to open Accessibility settings directly, or open the gear popover and use `More`.
-3. In System Settings:
-   - Privacy & Security -> Accessibility
-   - enable the app with bundle id `com.stevewalsh.ToolbarHelper`
-4. If trust state appears stale, use:
-   - popover -> `More` -> `Enable Accessibility Access`
-   - popover -> `More` -> `Restart Window Polling`
+2. Open macOS System Settings -> Privacy & Security -> Accessibility.
+3. Enable `com.stevewalsh.ToolbarHelper`.
+4. If needed, use app actions:
+   - `Open Accessibility Settings...`
+   - `Enable Accessibility Access`
+   - `Restart Window Polling`
 
 ## Usage
 
-1. Click the gear icon to open the window manager popover.
-2. In `Open Windows`:
-   - click the window name to focus it
-   - click the pin icon to pin/unpin it
-   - for pinned rows, use the pencil action to rename
-3. Click a pinned tab in the strip to focus that exact window.
-4. Drag pinned tabs in the strip to reorder.
-5. Use `…` overflow for pinned tabs beyond the visible strip.
-6. Open `More` in the popover to refresh, restart polling, open accessibility settings, or copy diagnostics.
+1. Click the menu bar pin icon to open the window manager popover.
+2. In `Open Windows`, click a row title to focus that window.
+3. Use the pin button to pin or unpin a window.
+4. Click a pinned tab in the menu bar strip to focus its mapped window.
+5. Right-click a pinned tab to rename, reassign, or unpin it.
+6. Drag pinned tabs to reorder.
+7. Use the `...` overflow menu when pin count exceeds visible capacity.
 
 ## Troubleshooting
 
-### Accessibility still appears disabled
+### Accessibility appears disabled
 
-- Use popover `More` actions (`Enable Accessibility Access` / `Restart Window Polling`).
-- Relaunch the app.
-- Reset AX permission and re-enable:
+- Open Accessibility settings from the app and verify permission is enabled.
+- Use `Restart Window Polling`.
+- If required, reset and re-grant permission:
 
 ```bash
 tccutil reset Accessibility com.stevewalsh.ToolbarHelper
 ```
 
-### xcodebuild uses CommandLineTools instead of full Xcode
+### `xcodebuild` points to CommandLineTools
+
+Use one of:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild ...
+```
+
+or:
 
 ```bash
 sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 ```
 
+## Project Structure
+
+- `toolbar-helper/App/` app lifecycle, orchestration, and status item host
+- `toolbar-helper/Views/` menu bar strip and popover UI
+- `toolbar-helper/Stores/` window enumeration/focus, pin persistence, and matching
+- `toolbar-helper/Services/` accessibility permission integration
+- `toolbar-helper/Models/` window and diagnostics models
+- `toolbar-helper/Utilities/` string normalization and matching helpers
+- `toolbar-helperTests/` pin matching and store behavior tests
+
 ## Privacy
 
 - No network dependency for core behavior.
-- Pinned window metadata and custom labels are local-only (`UserDefaults`).
+- Pinned metadata, labels, and settings are stored locally in `UserDefaults`.
 
-## Notes on Naming
+## Naming Notes
 
-- App branding name: `AnchorTabs`
-- Current Xcode target/scheme/repo path names remain `toolbar-helper` for now.
-- Bundle identifier remains `com.stevewalsh.ToolbarHelper` unless changed later.
+- Product name: `AnchorTabs`
+- Target/scheme/repo folder currently: `toolbar-helper`
+- Bundle identifier: `com.stevewalsh.ToolbarHelper`
