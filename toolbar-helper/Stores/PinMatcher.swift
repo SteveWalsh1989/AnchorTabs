@@ -50,11 +50,27 @@ enum PinMatcher {
     }
     guard !candidates.isEmpty else { return nil }
     let orderedCandidates = candidates.sorted(by: candidateSortOrder)
+    let referenceSignature = signature(for: reference)
 
     if let runtimeID = reference.lastKnownRuntimeID,
       let runtimeMatch = orderedCandidates.first(where: { $0.id == runtimeID })
     {
-      return PinMatchResult(window: runtimeMatch, method: .runtimeID)
+      if !isLegacyOccurrenceFallbackRuntimeID(runtimeID) {
+        return PinMatchResult(window: runtimeMatch, method: .runtimeID)
+      }
+
+      let shouldTrustFallbackRuntimeID: Bool
+      if let referenceSignature {
+        let signatureMatchCount = orderedCandidates.filter { signature(for: $0) == referenceSignature }
+          .count
+        shouldTrustFallbackRuntimeID = signatureMatchCount <= 1
+      } else {
+        shouldTrustFallbackRuntimeID = orderedCandidates.count == 1
+      }
+
+      if shouldTrustFallbackRuntimeID {
+        return PinMatchResult(window: runtimeMatch, method: .runtimeID)
+      }
     }
 
     if let windowNumber = reference.windowNumber,
@@ -63,22 +79,19 @@ enum PinMatcher {
       return PinMatchResult(window: numberMatch, method: .windowNumber)
     }
 
-    if let referenceSignature = signature(for: reference) {
+    if let referenceSignature {
       let signatureMatches = orderedCandidates.filter { signature(for: $0) == referenceSignature }
       if signatureMatches.count == 1, let match = signatureMatches.first {
         return PinMatchResult(window: match, method: .signature)
       }
-      if signatureMatches.count > 1,
-        let scoredSignatureMatch = bestScoredCandidate(
-          for: reference,
-          candidates: signatureMatches
-        )
-      {
-        return PinMatchResult(window: scoredSignatureMatch.window, method: .signature)
+      if signatureMatches.count > 1 {
+        return nil
       }
     }
 
-    guard let bestCandidate = bestScoredCandidate(for: reference, candidates: orderedCandidates) else {
+    guard orderedCandidates.count == 1,
+      let bestCandidate = bestScoredCandidate(for: reference, candidates: orderedCandidates)
+    else {
       return nil
     }
     return PinMatchResult(window: bestCandidate.window, method: bestCandidate.method)
@@ -222,5 +235,10 @@ enum PinMatcher {
   private static func compareOrderedInts(_ lhs: Int, _ rhs: Int) -> Bool? {
     guard lhs != rhs else { return nil }
     return lhs < rhs
+  }
+
+  // Legacy fallback ids use an occurrence suffix and can swap when AX list order changes.
+  private static func isLegacyOccurrenceFallbackRuntimeID(_ runtimeID: String) -> Bool {
+    runtimeID.contains("-fallback-")
   }
 }

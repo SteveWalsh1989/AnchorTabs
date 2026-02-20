@@ -86,24 +86,12 @@ final class PinnedStoreTests: XCTestCase {
     XCTAssertEqual(result?.method, .signature)
   }
 
-  func testPinMatcherSignatureCollisionPrefersClosestFrame() {
+  func testPinMatcherSignatureCollisionIsTreatedAsAmbiguous() {
     let reference = makeReference(
       bundleID: "com.example.cursor",
       title: "Workspace",
       windowNumber: nil,
       runtimeID: "1000-stale",
-      role: "AXWindow",
-      subrole: nil,
-      frame: WindowFrame(x: 100, y: 100, width: 1200, height: 760)
-    )
-
-    let expectedWindow = makeWindow(
-      id: "1000-a",
-      pid: 1000,
-      bundleID: "com.example.cursor",
-      appName: "Cursor",
-      title: "Workspace",
-      windowNumber: nil,
       role: "AXWindow",
       subrole: nil,
       frame: WindowFrame(x: 100, y: 100, width: 1200, height: 760)
@@ -121,14 +109,113 @@ final class PinnedStoreTests: XCTestCase {
       frame: WindowFrame(x: 130, y: 130, width: 1200, height: 760)
     )
 
+    let expectedWindow = makeWindow(
+      id: "1000-a",
+      pid: 1000,
+      bundleID: "com.example.cursor",
+      appName: "Cursor",
+      title: "Workspace",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 100, y: 100, width: 1200, height: 760)
+    )
+
     let result = PinMatcher.findBestMatch(
       for: reference,
       in: [otherWindow, expectedWindow],
       consumedWindowIDs: []
     )
 
-    XCTAssertEqual(result?.window.id, expectedWindow.id)
-    XCTAssertEqual(result?.method, .signature)
+    XCTAssertNil(result)
+  }
+
+  func testPinMatcherIgnoresLegacyFallbackRuntimeIDWhenSignatureIsAmbiguous() {
+    let reference = makeReference(
+      bundleID: "com.example.cursor",
+      title: "Workspace",
+      windowNumber: nil,
+      runtimeID: "1000-fallback-abc12345-0",
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 100, y: 100, width: 1200, height: 760)
+    )
+
+    let wrongRuntimeMatch = makeWindow(
+      id: "1000-fallback-abc12345-0",
+      pid: 1000,
+      bundleID: "com.example.cursor",
+      appName: "Cursor",
+      title: "Workspace",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 130, y: 130, width: 1200, height: 760)
+    )
+
+    let otherWindow = makeWindow(
+      id: "1000-fallback-abc12345-1",
+      pid: 1000,
+      bundleID: "com.example.cursor",
+      appName: "Cursor",
+      title: "Workspace",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 100, y: 100, width: 1200, height: 760)
+    )
+
+    let result = PinMatcher.findBestMatch(
+      for: reference,
+      in: [wrongRuntimeMatch, otherWindow],
+      consumedWindowIDs: []
+    )
+
+    XCTAssertNil(result)
+  }
+
+  func testPinMatcherDoesNotTitleFallbackAcrossMultipleAppWindows() {
+    let reference = makeReference(
+      bundleID: "com.example.browser",
+      title: "Project Plan",
+      windowNumber: nil,
+      runtimeID: "stale-runtime-id",
+      role: nil,
+      subrole: nil,
+      frame: nil
+    )
+
+    let exactTitleWindow = makeWindow(
+      id: "700-1",
+      pid: 700,
+      bundleID: "com.example.browser",
+      appName: "Browser",
+      title: "Project Plan",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 10, y: 10, width: 1200, height: 760)
+    )
+
+    let otherWindow = makeWindow(
+      id: "700-2",
+      pid: 700,
+      bundleID: "com.example.browser",
+      appName: "Browser",
+      title: "Release Notes",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 40, y: 40, width: 1200, height: 760)
+    )
+
+    let result = PinMatcher.findBestMatch(
+      for: reference,
+      in: [exactTitleWindow, otherWindow],
+      consumedWindowIDs: []
+    )
+
+    XCTAssertNil(result)
   }
 
   func testWindowStoreFallbackRuntimeIDFingerprintNormalizesTitle() {
@@ -387,6 +474,63 @@ final class PinnedStoreTests: XCTestCase {
     XCTAssertEqual(store.pinnedItems[0].reference.appName, "Writer Pro")
     XCTAssertEqual(store.pinnedItems[0].displayTitle, "Final Draft")
     XCTAssertEqual(store.pinnedItems[0].displayAppName, "Writer Pro")
+    defaults.removePersistentDomain(forName: suiteName)
+  }
+
+  @MainActor
+  func testPinnedStoreReassignPinKeepsCustomNameAndUpdatesIdentity() {
+    let suiteName = "PinnedStoreTests.\(UUID().uuidString)"
+    guard let defaults = UserDefaults(suiteName: suiteName) else {
+      XCTFail("Unable to create test defaults suite")
+      return
+    }
+    defaults.removePersistentDomain(forName: suiteName)
+
+    let initialWindow = makeWindow(
+      id: "901-generated-a",
+      pid: 901,
+      bundleID: "com.example.cursor",
+      appName: "Cursor",
+      title: "Repo One",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 120, y: 80, width: 1200, height: 760)
+    )
+    let replacementWindow = makeWindow(
+      id: "901-generated-b",
+      pid: 901,
+      bundleID: "com.example.cursor",
+      appName: "Cursor",
+      title: "Repo Two",
+      windowNumber: nil,
+      role: "AXWindow",
+      subrole: nil,
+      frame: WindowFrame(x: 220, y: 120, width: 1200, height: 760)
+    )
+
+    let store = PinnedStore(userDefaults: defaults)
+    store.reconcile(with: [initialWindow, replacementWindow])
+    store.togglePin(for: initialWindow)
+
+    guard let pinnedItem = store.pinnedItems.first else {
+      XCTFail("Expected one pinned item")
+      return
+    }
+
+    store.renamePin(pinID: pinnedItem.id, customName: "Work Repo")
+    store.reassignPin(pinID: pinnedItem.id, to: replacementWindow)
+
+    guard let updatedPinnedItem = store.pinnedItems.first else {
+      XCTFail("Expected one pinned item after reassignment")
+      return
+    }
+
+    XCTAssertEqual(updatedPinnedItem.window?.id, replacementWindow.id)
+    XCTAssertEqual(updatedPinnedItem.reference.lastKnownRuntimeID, replacementWindow.id)
+    XCTAssertEqual(updatedPinnedItem.reference.title, replacementWindow.title)
+    XCTAssertEqual(updatedPinnedItem.reference.customName, "Work Repo")
+    XCTAssertEqual(updatedPinnedItem.tabLabel, "Work Repo")
     defaults.removePersistentDomain(forName: suiteName)
   }
 }

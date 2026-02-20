@@ -110,22 +110,24 @@ final class PinnedStore: ObservableObject {
       return
     }
 
+    var reference = PinnedWindowReference(
+      id: UUID(),
+      bundleID: window.bundleID,
+      appName: canonicalStoredAppName(for: window),
+      title: canonicalStoredTitle(for: window),
+      windowNumber: window.windowNumber,
+      lastKnownRuntimeID: window.id,
+      role: window.role,
+      subrole: window.subrole,
+      customName: nil,
+      normalizedTitle: PinMatcher.normalizedTitle(window.title),
+      frame: window.frame,
+      signature: PinMatcher.signature(for: window),
+      pinnedAt: Date()
+    )
+    updateReferenceIdentity(&reference, from: window)
     references.append(
-      PinnedWindowReference(
-        id: UUID(),
-        bundleID: window.bundleID,
-        appName: canonicalStoredAppName(for: window),
-        title: canonicalStoredTitle(for: window),
-        windowNumber: window.windowNumber,
-        lastKnownRuntimeID: window.id,
-        role: window.role,
-        subrole: window.subrole,
-        customName: nil,
-        normalizedTitle: PinMatcher.normalizedTitle(window.title),
-        frame: window.frame,
-        signature: PinMatcher.signature(for: window),
-        pinnedAt: Date()
-      )
+      reference
     )
     save()
     reconcile(with: lastSeenWindows)
@@ -153,6 +155,16 @@ final class PinnedStore: ObservableObject {
     guard let index = references.firstIndex(where: { $0.id == pinID }) else { return }
     let cleanedName = customName?.trimmingCharacters(in: .whitespacesAndNewlines)
     references[index].customName = cleanedName?.isEmpty == true ? nil : cleanedName
+    save()
+    reconcile(with: lastSeenWindows)
+  }
+
+  // Rebinds an existing pin to a selected live window while preserving custom pin naming.
+  func reassignPin(pinID: UUID, to window: WindowSnapshot) {
+    guard let index = references.firstIndex(where: { $0.id == pinID }) else { return }
+    var reference = references[index]
+    updateReferenceIdentity(&reference, from: window)
+    references[index] = reference
     save()
     reconcile(with: lastSeenWindows)
   }
@@ -211,6 +223,21 @@ final class PinnedStore: ObservableObject {
     return trimmedBundleID.isEmpty ? "Unknown App" : trimmedBundleID
   }
 
+  // Updates identity fields for a reference using the selected live window snapshot.
+  private func updateReferenceIdentity(_ reference: inout PinnedWindowReference, from window: WindowSnapshot)
+  {
+    reference.bundleID = window.bundleID
+    reference.appName = canonicalStoredAppName(for: window)
+    reference.title = canonicalStoredTitle(for: window)
+    reference.windowNumber = window.windowNumber
+    reference.lastKnownRuntimeID = window.id
+    reference.role = window.role
+    reference.subrole = window.subrole
+    reference.normalizedTitle = PinMatcher.normalizedTitle(window.title)
+    reference.frame = window.frame
+    reference.signature = PinMatcher.signature(for: window)
+  }
+
   // Finds an existing pin id for a live window using strict identities first.
   private func existingPinID(for window: WindowSnapshot) -> UUID? {
     if let exactRuntimeMatch = pinnedItems.first(where: { $0.window?.id == window.id }) {
@@ -223,12 +250,6 @@ final class PinnedStore: ObservableObject {
           || ($0.lastKnownRuntimeID != nil && $0.lastKnownRuntimeID == window.id))
     }) {
       return directMatch.id
-    }
-
-    let signature = PinMatcher.signature(for: window)
-    let signatureMatches = references.filter { PinMatcher.signature(for: $0) == signature }
-    if signatureMatches.count == 1 {
-      return signatureMatches[0].id
     }
     return nil
   }

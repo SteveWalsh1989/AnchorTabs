@@ -58,6 +58,11 @@ struct MenuBarStripView: View {
             Menu {
               ForEach(model.overflowPinnedItems, id: \.id) { pinnedItem in
                 Menu(pinnedItem.tabLabel) {
+                  Text(model.pinnedWindowMappingDescription(for: pinnedItem))
+                    .font(.system(size: 11))
+                  reassignmentMenu(for: pinnedItem)
+                  Divider()
+
                   Button("Focus Window") {
                     model.activatePinnedItem(pinnedItem)
                   }
@@ -161,6 +166,11 @@ struct MenuBarStripView: View {
         return reorderPinnedItem(draggedID: draggedID, beforeIndex: targetIndex)
       }
       .contextMenu {
+        Text(model.pinnedWindowMappingDescription(for: pinnedItem))
+          .font(.system(size: 11))
+        reassignmentMenu(for: pinnedItem)
+        Divider()
+
         Button {
           model.promptRename(for: pinnedItem)
         } label: {
@@ -176,6 +186,28 @@ struct MenuBarStripView: View {
         }
       }
     )
+  }
+
+  // Builds the quick reassign menu, keeping pin naming while changing the target window.
+  @ViewBuilder
+  private func reassignmentMenu(for pinnedItem: PinnedWindowItem) -> some View {
+    let candidates = model.reassignmentWindows(for: pinnedItem)
+    if candidates.isEmpty {
+      Button("Reassign Window") {}
+        .disabled(true)
+    } else {
+      Menu("Reassign Window") {
+        ForEach(candidates, id: \.id) { candidate in
+          let isCurrentWindow = pinnedItem.window?.id == candidate.id
+          Button {
+            model.reassignPinnedItem(pinnedItem, to: candidate)
+          } label: {
+            Label(candidate.menuTitle, systemImage: isCurrentWindow ? "checkmark.circle.fill" : "circle")
+          }
+          .disabled(isCurrentWindow)
+        }
+      }
+    }
   }
 
   // Tooltip text for pinned tabs, including missing-state guidance.

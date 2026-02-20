@@ -190,7 +190,7 @@ struct WindowManagerPopoverView: View {
 
   // Inline expandable settings shown under the lower divider.
   private var layoutSettingsSection: some View {
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .leading, spacing: 20) {
       settingRow(
         title: "Spacing",
         description: "Gap before the gear icon."
@@ -219,23 +219,12 @@ struct WindowManagerPopoverView: View {
         checkboxControl(isOn: $model.highlightFocusedWindow)
       }
 
-      HStack {
-        Spacer()
-        Button("Reset All Settings") {
-          model.resetMenuLayoutSettingsToDefaults()
-        }
-        .font(.system(size: 11, weight: .semibold))
-      }
-      .font(.system(size: 12))
-
-      Divider()
-
       LazyVGrid(
         columns: [
           GridItem(.flexible(), spacing: 8),
           GridItem(.flexible(), spacing: 8),
         ],
-        spacing: 8
+        spacing: 10
       ) {
         settingsActionButton("Refresh Open Windows") {
           model.refreshWindowsNow()
@@ -264,12 +253,13 @@ struct WindowManagerPopoverView: View {
 
       Divider()
 
-      HStack {
-        Spacer()
-        Button("Quit AnchorTabs") {
+      HStack(spacing: 8) {
+        settingsActionButton("Reset All Settings") {
+          model.resetMenuLayoutSettingsToDefaults()
+        }
+        settingsActionButton("Quit AnchorTabs") {
           NSApplication.shared.terminate(nil)
         }
-        .font(.system(size: 11, weight: .semibold))
       }
       .font(.system(size: 12))
     }

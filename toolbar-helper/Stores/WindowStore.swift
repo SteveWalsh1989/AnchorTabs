@@ -167,13 +167,14 @@ final class WindowStore: ObservableObject {
   private func enumerateWindows(in apps: [NSRunningApplication]) -> (
     windows: [WindowSnapshot], handlesByRuntimeID: [String: AXUIElement]
   ) {
+    let previousHandlesByRuntimeID = handlesByRuntimeID
     var snapshots: [WindowSnapshot] = []
     var handles: [String: AXUIElement] = [:]
+    var consumedRuntimeIDs: Set<String> = []
 
     for app in apps {
       let appElement = AXUIElementCreateApplication(app.processIdentifier)
       guard let windowElements = axWindowList(for: appElement) else { continue }
-      var fallbackOccurrenceByFingerprint: [String: Int] = [:]
 
       for windowElement in windowElements {
         guard
@@ -183,23 +184,29 @@ final class WindowStore: ObservableObject {
           )
         else { continue }
 
-        let resolvedSnapshot: WindowSnapshot
-        if snapshot.id.isEmpty {
-          let fingerprint = Self.fallbackRuntimeIDFingerprint(for: snapshot)
-          let occurrence = fallbackOccurrenceByFingerprint[fingerprint, default: 0]
-          fallbackOccurrenceByFingerprint[fingerprint] = occurrence + 1
-          let runtimeID = Self.fallbackRuntimeID(
+        let resolvedRuntimeID: String
+        if snapshot.id.isEmpty,
+          let reusedRuntimeID = reusedRuntimeID(
+            for: windowElement,
             pid: app.processIdentifier,
-            fingerprint: fingerprint,
-            occurrence: occurrence
+            previousHandlesByRuntimeID: previousHandlesByRuntimeID,
+            consumedRuntimeIDs: consumedRuntimeIDs
           )
-          resolvedSnapshot = Self.snapshotWithRuntimeID(snapshot, runtimeID: runtimeID)
+        {
+          resolvedRuntimeID = reusedRuntimeID
+        } else if snapshot.id.isEmpty {
+          resolvedRuntimeID = Self.generatedRuntimeID(pid: app.processIdentifier)
         } else {
-          resolvedSnapshot = snapshot
+          resolvedRuntimeID = snapshot.id
         }
 
+        consumedRuntimeIDs.insert(resolvedRuntimeID)
+        let resolvedSnapshot =
+          snapshot.id == resolvedRuntimeID
+          ? snapshot
+          : Self.snapshotWithRuntimeID(snapshot, runtimeID: resolvedRuntimeID)
         snapshots.append(resolvedSnapshot)
-        handles[resolvedSnapshot.id] = windowElement
+        handles[resolvedRuntimeID] = windowElement
       }
     }
 
@@ -422,7 +429,29 @@ final class WindowStore: ObservableObject {
     ]
   }
 
-  // Replaces an unresolved runtime id after deterministic fallback computation.
+  // Reuses a previously assigned runtime id when AX reports the same live window element.
+  private func reusedRuntimeID(
+    for windowElement: AXUIElement,
+    pid: pid_t,
+    previousHandlesByRuntimeID: [String: AXUIElement],
+    consumedRuntimeIDs: Set<String>
+  ) -> String? {
+    for (runtimeID, previousElement) in previousHandlesByRuntimeID {
+      guard runtimeID.hasPrefix("\(pid)-") else { continue }
+      guard !consumedRuntimeIDs.contains(runtimeID) else { continue }
+      if CFEqual(previousElement, windowElement) {
+        return runtimeID
+      }
+    }
+    return nil
+  }
+
+  // Generates a fresh runtime id when AX has no window number and no reusable prior identity.
+  private static func generatedRuntimeID(pid: pid_t) -> String {
+    "\(pid)-generated-\(UUID().uuidString.lowercased())"
+  }
+
+  // Replaces an unresolved runtime id after runtime-id assignment.
   private static func snapshotWithRuntimeID(_ snapshot: WindowSnapshot, runtimeID: String)
     -> WindowSnapshot
   {
@@ -534,6 +563,14 @@ final class WindowStore: ObservableObject {
       if let numberMatch = candidateWindows.first(where: { $0.windowNumber == focusedWindowNumber }) {
         return numberMatch.id
       }
+    }
+
+    if let focusedElementRuntimeID = handlesByRuntimeID.first(where: { runtimeID, element in
+      runtimeID.hasPrefix("\(pid)-") && CFEqual(element, focusedWindowElement)
+    })?.key,
+      candidateWindows.contains(where: { $0.id == focusedElementRuntimeID })
+    {
+      return focusedElementRuntimeID
     }
 
     let focusedWindowTitle =

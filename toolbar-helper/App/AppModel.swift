@@ -303,6 +303,31 @@ final class AppModel: ObservableObject {
     _ = windowStore.activateWindow(runtimeID: runtimeID)
   }
 
+  // Reassigns a pin to another live window while preserving its custom label.
+  func reassignPinnedItem(_ item: PinnedWindowItem, to window: WindowSnapshot) {
+    pinnedStore.reassignPin(pinID: item.id, to: window)
+  }
+
+  // Candidate windows for quick pin reassignment within the same app only.
+  func reassignmentWindows(for item: PinnedWindowItem) -> [WindowSnapshot] {
+    windows
+      .filter { $0.bundleID == item.reference.bundleID }
+      .sorted { lhs, rhs in
+        if lhs.menuTitle != rhs.menuTitle {
+          return lhs.menuTitle < rhs.menuTitle
+        }
+        return lhs.id < rhs.id
+      }
+  }
+
+  // Human-readable description of the currently mapped window for a pinned item.
+  func pinnedWindowMappingDescription(for item: PinnedWindowItem) -> String {
+    if let window = item.window {
+      return "\(window.title) — \(window.appName)"
+    }
+    return "Missing: \(item.reference.title) — \(item.reference.appName)"
+  }
+
   // Focuses a live window selected from the open-windows list.
   func activateWindow(_ window: WindowSnapshot) {
     _ = windowStore.activateWindow(runtimeID: window.id)
