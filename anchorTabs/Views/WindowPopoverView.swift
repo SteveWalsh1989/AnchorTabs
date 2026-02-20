@@ -10,7 +10,6 @@ struct WindowPopoverView: View {
     .autoconnect()
   private let popoverWidth: CGFloat = 300
   private let noAccessibilityPopoverHeight: CGFloat = 170
-  private let settingsPopoverHeight: CGFloat = 430
   private let openWindowsRowsBeforeScroll = 8
   private let openWindowsListMaxHeight: CGFloat = 430
 
@@ -34,6 +33,7 @@ struct WindowPopoverView: View {
         .font(.system(size: 12))
 
         WindowPopoverSettingsView(model: model)
+          .fixedSize(horizontal: false, vertical: true)
       } else {
         HStack {
           Text("AnchorTab")
@@ -71,9 +71,6 @@ struct WindowPopoverView: View {
   private var explicitPopoverHeight: CGFloat? {
     if !model.isAccessibilityTrusted {
       return noAccessibilityPopoverHeight
-    }
-    if isShowingLayoutSettings {
-      return settingsPopoverHeight
     }
     return nil
   }
