@@ -71,8 +71,10 @@ struct MenuBarStripView: View {
                   reassignmentMenu(for: pinnedItem)
                   Divider()
 
-                  Button("Focus Window") {
+                  Button {
                     model.activatePinnedItem(pinnedItem)
+                  } label: {
+                    Label("Focus Window", systemImage: "scope")
                   }
                   .disabled(pinnedItem.isMissing)
 
@@ -83,13 +85,17 @@ struct MenuBarStripView: View {
                   }
 
                   if pinnedItem.reference.customName?.isEmpty == false {
-                    Button("Reset Name") {
+                    Button {
                       model.renamePin(pinID: pinnedItem.id, customName: nil)
+                    } label: {
+                      Label("Reset Name", systemImage: "text.cursor")
                     }
                   }
 
-                  Button("Unpin") {
+                  Button {
                     model.unpin(pinID: pinnedItem.id)
+                  } label: {
+                    Label("Unpin", systemImage: "pin.slash")
                   }
                 }
               }
@@ -185,12 +191,16 @@ struct MenuBarStripView: View {
           Label("Rename…", systemImage: "pencil")
         }
         if pinnedItem.reference.customName?.isEmpty == false {
-          Button("Reset Name") {
+          Button {
             model.renamePin(pinID: pinnedItem.id, customName: nil)
+          } label: {
+            Label("Reset Name", systemImage: "text.cursor")
           }
         }
-        Button("Unpin") {
+        Button {
           model.unpin(pinID: pinnedItem.id)
+        } label: {
+          Label("Unpin", systemImage: "pin.slash")
         }
       }
     )
@@ -201,10 +211,12 @@ struct MenuBarStripView: View {
   private func reassignmentMenu(for pinnedItem: PinnedWindowItem) -> some View {
     let candidates = model.reassignmentWindows(for: pinnedItem)
     if candidates.isEmpty {
-      Button("Reassign Window") {}
+      Button {} label: {
+        Label("Reassign Window", systemImage: "arrow.triangle.2.circlepath")
+      }
         .disabled(true)
     } else {
-      Menu("Reassign Window") {
+      Menu {
         ForEach(candidates, id: \.id) { candidate in
           let isCurrentWindow = pinnedItem.window?.id == candidate.id
           Button {
@@ -214,6 +226,8 @@ struct MenuBarStripView: View {
           }
           .disabled(isCurrentWindow)
         }
+      } label: {
+        Label("Reassign Window", systemImage: "arrow.triangle.2.circlepath")
       }
     }
   }
