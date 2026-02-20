@@ -18,8 +18,6 @@ final class AnchorTabsModel: ObservableObject {
   @Published private(set) var pinnedItems: [PinnedWindowItem] = []
   @Published private(set) var isAccessibilityTrusted = false
   @Published private(set) var maxVisiblePinnedTabs = 10
-  @Published private(set) var windowDiagnostics = OpenWindowsStoreDiagnostics.empty
-  @Published private(set) var pinnedDiagnostics = PinnedWindowsStoreDiagnostics.empty
   @Published private(set) var focusedWindowRuntimeID: String?
   @Published private(set) var hidesPinnedItemsInMenuBar = false
 
@@ -177,56 +175,12 @@ final class AnchorTabsModel: ObservableObject {
     setMenuBarPinnedItemsHidden(!hidesPinnedItemsInMenuBar)
   }
 
-  // Rebuilds the AX session without clearing persisted pins.
-  func resetAccessibilitySession() {
-    permissionManager.refreshStatus()
-    windowStore.stopPolling()
-    windowStore.startPolling()
-    updateWindowRefreshPolicy()
-  }
-
   // Resets layout/highlight preferences to product defaults.
   func resetMenuLayoutSettingsToDefaults() {
     menuTrailingSpacing = 0
     menuPinnedItemMinWidth = 0
     highlightMissingPins = true
     highlightFocusedWindow = true
-  }
-
-  // Builds a copyable diagnostics report for bug triage.
-  func diagnosticsReport() -> String {
-    var lines: [String] = []
-    lines.append("AnchorTabs Diagnostics")
-    lines.append("AX Trusted: \(windowDiagnostics.isTrusted ? "Yes" : "No")")
-    lines.append("Open Windows: \(windowDiagnostics.windowCount)")
-    lines.append("Pinned Items: \(pinnedDiagnostics.totalPins)")
-    lines.append("Missing Pins: \(pinnedDiagnostics.missingPins)")
-
-    if let reason = windowDiagnostics.lastRefreshReason?.rawValue {
-      lines.append("Last Refresh Reason: \(reason)")
-    } else {
-      lines.append("Last Refresh Reason: N/A")
-    }
-
-    if let refreshedAt = windowDiagnostics.lastRefreshAt {
-      let refreshedText = DateFormatter.localizedString(
-        from: refreshedAt,
-        dateStyle: .short,
-        timeStyle: .medium
-      )
-      lines.append("Last Refresh At: \(refreshedText)")
-    } else {
-      lines.append("Last Refresh At: N/A")
-    }
-
-    return lines.joined(separator: "\n")
-  }
-
-  // Copies diagnostics report to the system pasteboard.
-  func copyDiagnosticsToPasteboard() {
-    let report = diagnosticsReport()
-    NSPasteboard.general.clearContents()
-    NSPasteboard.general.setString(report, forType: .string)
   }
 
   // Adds or removes a pin for a specific live window.
@@ -388,13 +342,6 @@ final class AnchorTabsModel: ObservableObject {
       }
       .store(in: &cancellables)
 
-    windowStore.$diagnostics
-      .receive(on: DispatchQueue.main)
-      .sink { [weak self] diagnostics in
-        self?.windowDiagnostics = diagnostics
-      }
-      .store(in: &cancellables)
-
     windowStore.$focusedRuntimeID
       .removeDuplicates()
       .receive(on: DispatchQueue.main)
@@ -408,13 +355,6 @@ final class AnchorTabsModel: ObservableObject {
       .receive(on: DispatchQueue.main)
       .sink { [weak self] pinnedItems in
         self?.pinnedItems = pinnedItems
-      }
-      .store(in: &cancellables)
-
-    pinnedStore.$diagnostics
-      .receive(on: DispatchQueue.main)
-      .sink { [weak self] diagnostics in
-        self?.pinnedDiagnostics = diagnostics
       }
       .store(in: &cancellables)
 
