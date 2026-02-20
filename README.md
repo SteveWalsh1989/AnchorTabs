@@ -21,17 +21,6 @@ Popover for pinning items | additional settings
 - Per-window pinning, including multiple windows from the same app.
 - Open windows manager popover with focus, pin/unpin, and rename actions.
 - Drag-and-drop pin reordering plus overflow menu for tabs beyond the visible limit.
-- Missing-window handling for closed or unmatched pinned windows.
-- Local persistence for pins, custom names, and UI settings (`UserDefaults`).
-
-### Robust Window Mapping
-
-The app now uses stricter mapping rules so pins do not silently jump to the wrong window:
-
-- Uses `AXWindowNumber` when available.
-- For windows without `AXWindowNumber`, reuses runtime IDs by matching the underlying `AXUIElement`.
-- Generates unique runtime IDs for newly seen no-number windows.
-- Treats ambiguous matches as missing instead of auto-remapping to a potentially wrong window.
 
 ### Pinned Tab Context Menu
 
