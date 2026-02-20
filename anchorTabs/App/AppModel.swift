@@ -273,7 +273,14 @@ final class AppModel: ObservableObject {
     alert.addButton(withTitle: "Reset")
     alert.addButton(withTitle: "Cancel")
 
+    if let saveButton = alert.buttons.first {
+      textField.target = saveButton
+      textField.action = #selector(NSButton.performClick(_:))
+    }
+    alert.window.initialFirstResponder = textField
+
     NSApp.activate(ignoringOtherApps: true)
+    alert.window.makeFirstResponder(textField)
     let response = alert.runModal()
     if response == .alertFirstButtonReturn {
       renamePin(pinID: pinnedItem.id, customName: textField.stringValue)
