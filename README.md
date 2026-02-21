@@ -109,7 +109,7 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 - `anchorTabs/Views/` menu bar strip and popover UI
 - `anchorTabs/Stores/` window enumeration/focus, pin persistence, and matching
 - `anchorTabs/Services/` accessibility permission integration
-- `anchorTabs/Models/` window and diagnostics models
+- `anchorTabs/Models/` window and pinning models
 - `anchorTabs/Utilities/` string normalization and matching helpers
 - `anchorTabsTests/` pin matching and store behavior tests
 
@@ -136,4 +136,3 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 - Yes, changing the spacing sometimes moves the popover around
 - It wont refresh when popover is open, there is manual button for it though as the auto refresh looked glitchy
 - For single instance windows, they often show when changing mac window if you use muttiple workspaces. Thats why there is a show/hide option on the popover 
-

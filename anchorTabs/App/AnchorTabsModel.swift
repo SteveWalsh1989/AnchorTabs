@@ -146,7 +146,7 @@ final class AnchorTabsModel: ObservableObject {
 
   // Forces an immediate AX window refresh.
   func refreshWindowsNow() {
-    windowStore.refreshWindowsNow(reason: .manual)
+    windowStore.refreshWindowsNow()
   }
 
   // Tracks popover visibility and reapplies the shared refresh policy.

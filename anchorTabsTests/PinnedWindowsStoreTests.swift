@@ -35,7 +35,6 @@ final class PinnedWindowsStoreTests: XCTestCase {
     )
 
     XCTAssertEqual(result?.window.id, "900-7")
-    XCTAssertEqual(result?.method, .runtimeID)
   }
 
   func testPinnedWindowMatcherFallsBackToSignature() {
@@ -83,7 +82,6 @@ final class PinnedWindowsStoreTests: XCTestCase {
     )
 
     XCTAssertEqual(result?.window.id, relaunchedWindow.id)
-    XCTAssertEqual(result?.method, .signature)
   }
 
   func testPinnedWindowMatcherSignatureCollisionIsTreatedAsAmbiguous() {
@@ -348,9 +346,6 @@ final class PinnedWindowsStoreTests: XCTestCase {
 
     XCTAssertEqual(store.pinnedItems.count, 1)
     XCTAssertTrue(store.pinnedItems[0].isMissing)
-    XCTAssertEqual(store.diagnostics.totalPins, 1)
-    XCTAssertEqual(store.diagnostics.matchedPins, 0)
-    XCTAssertEqual(store.diagnostics.missingPins, 1)
     defaults.removePersistentDomain(forName: suiteName)
   }
 

@@ -1,9 +1,8 @@
 import Foundation
 
-// Carries the chosen window plus the strategy used to pick it.
+// Carries the chosen matching live window.
 struct PinnedWindowMatchResult {
   let window: WindowSnapshot
-  let method: PinMatchMethod
 }
 
 // Stateless matching engine used by PinnedWindowsStore reconciliation.
@@ -56,7 +55,7 @@ enum PinnedWindowMatcher {
       let runtimeMatch = orderedCandidates.first(where: { $0.id == runtimeID })
     {
       if !isLegacyOccurrenceFallbackRuntimeID(runtimeID) {
-        return PinnedWindowMatchResult(window: runtimeMatch, method: .runtimeID)
+        return PinnedWindowMatchResult(window: runtimeMatch)
       }
 
       let shouldTrustFallbackRuntimeID: Bool
@@ -69,20 +68,20 @@ enum PinnedWindowMatcher {
       }
 
       if shouldTrustFallbackRuntimeID {
-        return PinnedWindowMatchResult(window: runtimeMatch, method: .runtimeID)
+        return PinnedWindowMatchResult(window: runtimeMatch)
       }
     }
 
     if let windowNumber = reference.windowNumber,
       let numberMatch = orderedCandidates.first(where: { $0.windowNumber == windowNumber })
     {
-      return PinnedWindowMatchResult(window: numberMatch, method: .windowNumber)
+      return PinnedWindowMatchResult(window: numberMatch)
     }
 
     if let referenceSignature {
       let signatureMatches = orderedCandidates.filter { signature(for: $0) == referenceSignature }
       if signatureMatches.count == 1, let match = signatureMatches.first {
-        return PinnedWindowMatchResult(window: match, method: .signature)
+        return PinnedWindowMatchResult(window: match)
       }
       if signatureMatches.count > 1 {
         return nil
@@ -94,7 +93,7 @@ enum PinnedWindowMatcher {
     else {
       return nil
     }
-    return PinnedWindowMatchResult(window: bestCandidate.window, method: bestCandidate.method)
+    return PinnedWindowMatchResult(window: bestCandidate)
   }
 
   // Combines role/title/frame buckets into a deterministic signature string.
@@ -152,10 +151,9 @@ enum PinnedWindowMatcher {
   private static func bestScoredCandidate(
     for reference: PinnedWindowReference,
     candidates: [WindowSnapshot]
-  ) -> (window: WindowSnapshot, method: PinMatchMethod)? {
+  ) -> WindowSnapshot? {
     let referenceNormalizedTitle = reference.normalizedTitle ?? normalizedTitle(reference.title)
     var bestWindow: WindowSnapshot?
-    var bestMethod: PinMatchMethod = .fuzzyTitle
     var bestScore = Int.min
     var bestFrameDistance = Int.max
 
@@ -170,7 +168,6 @@ enum PinnedWindowMatcher {
       guard isExactTitle || isFuzzyTitle else { continue }
 
       var score = isExactTitle ? 240 : 130
-      let method: PinMatchMethod = isExactTitle ? .exactTitle : .fuzzyTitle
 
       if let role = reference.role, role == candidate.role {
         score += 55
@@ -197,12 +194,10 @@ enum PinnedWindowMatcher {
         bestScore = score
         bestFrameDistance = candidateFrameDistance
         bestWindow = candidate
-        bestMethod = method
       }
     }
 
-    guard let bestWindow else { return nil }
-    return (window: bestWindow, method: bestMethod)
+    return bestWindow
   }
 
   // Provides deterministic ordering for tie-breaking and "first match" fallbacks.

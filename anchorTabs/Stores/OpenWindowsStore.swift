@@ -12,12 +12,11 @@ private let openWindowsStoreAXObserverCallback: AXObserverCallback = { _, _, _, 
   NotificationCenter.default.post(name: openWindowsStoreAXObserverEventNotification, object: nil)
 }
 
-// Enumerates AX windows, focuses windows, and tracks observer/polling diagnostics.
+// Enumerates AX windows and focuses specific runtime windows.
 @MainActor
 final class OpenWindowsStore: ObservableObject {
   @Published private(set) var windows: [WindowSnapshot] = []
   @Published private(set) var focusedRuntimeID: String?
-  @Published private(set) var diagnostics = OpenWindowsStoreDiagnostics.empty
 
   private struct AXObserverRegistration {
     let observer: AXObserver
@@ -45,11 +44,6 @@ final class OpenWindowsStore: ObservableObject {
   private var notificationCancellables: Set<AnyCancellable> = []
   private var didStartObservers = false
   private var isAutomaticRefreshingPaused = false
-  private var refreshCount = 0
-  private var observerEventCount = 0
-  private var lastRefreshAt: Date?
-  private var lastRefreshReason: WindowRefreshReason?
-  private var lastRefreshDurationMs: Double?
 
   // Injects the permission manager used for AX trust checks.
   init(permissionManager: AccessibilityPermissionService) {
@@ -60,7 +54,7 @@ final class OpenWindowsStore: ObservableObject {
   func startPolling() {
     stopPolling()
     startObserverNotifications()
-    refreshWindowsNow(reason: .startup)
+    refreshWindowsNow()
     updatePollingTimerIfNeeded()
   }
 
@@ -77,7 +71,6 @@ final class OpenWindowsStore: ObservableObject {
     }
     stopObserverNotifications()
     removeAllAXObservers()
-    publishDiagnostics()
   }
 
   // Suspends automatic polling/observer refresh while allowing manual refreshes.
@@ -89,19 +82,17 @@ final class OpenWindowsStore: ObservableObject {
     observerRefreshTimer?.invalidate()
     observerRefreshTimer = nil
     activePollingInterval = nil
-    publishDiagnostics()
   }
 
   // Re-enables automatic refresh flow and performs one immediate sync.
   func resumeAutomaticRefreshing() {
     guard isAutomaticRefreshingPaused else { return }
     isAutomaticRefreshingPaused = false
-    refreshWindowsNow(reason: .manual)
+    refreshWindowsNow()
   }
 
-  // Refreshes open windows and updates diagnostics for the given trigger.
-  func refreshWindowsNow(reason: WindowRefreshReason = .manual) {
-    let refreshStartedAt = Date()
+  // Refreshes open windows immediately.
+  func refreshWindowsNow() {
     permissionManager.refreshStatus()
     guard permissionManager.isTrusted else {
       if !windows.isEmpty {
@@ -113,7 +104,6 @@ final class OpenWindowsStore: ObservableObject {
       handlesByRuntimeID = [:]
       removeAllAXObservers()
       updatePollingTimerIfNeeded()
-      recordRefresh(reason: reason, startedAt: refreshStartedAt)
       return
     }
 
@@ -135,7 +125,6 @@ final class OpenWindowsStore: ObservableObject {
       focusedRuntimeID = resolvedFocusedRuntimeID
     }
     updatePollingTimerIfNeeded()
-    recordRefresh(reason: reason, startedAt: refreshStartedAt)
   }
 
   // Activates and focuses a specific runtime window id.
@@ -251,7 +240,7 @@ final class OpenWindowsStore: ObservableObject {
         guard let self else { return }
         guard !self.isAutomaticRefreshingPaused else { return }
         Task { @MainActor in
-          self.refreshWindowsNow(reason: .workspaceLifecycle)
+          self.refreshWindowsNow()
         }
       }
       .store(in: &notificationCancellables)
@@ -270,7 +259,6 @@ final class OpenWindowsStore: ObservableObject {
   private func scheduleObserverRefresh() {
     guard permissionManager.isTrusted else { return }
     guard !isAutomaticRefreshingPaused else { return }
-    observerEventCount += 1
     observerRefreshTimer?.invalidate()
     observerRefreshTimer = Timer.scheduledTimer(
       withTimeInterval: observerRefreshDebounceInterval,
@@ -278,10 +266,9 @@ final class OpenWindowsStore: ObservableObject {
     ) { [weak self] _ in
       guard let self else { return }
       Task { @MainActor in
-        self.refreshWindowsNow(reason: .observerEvent)
+        self.refreshWindowsNow()
       }
     }
-    publishDiagnostics()
   }
 
   // Chooses fallback vs observer-backed polling interval.
@@ -299,7 +286,6 @@ final class OpenWindowsStore: ObservableObject {
       timer?.invalidate()
       timer = nil
       activePollingInterval = nil
-      publishDiagnostics()
       return
     }
 
@@ -314,11 +300,10 @@ final class OpenWindowsStore: ObservableObject {
       [weak self] _ in
       guard let self else { return }
       Task { @MainActor in
-        self.refreshWindowsNow(reason: .polling)
+        self.refreshWindowsNow()
       }
     }
     timer?.tolerance = min(0.5, desiredInterval * 0.25)
-    publishDiagnostics()
   }
 
   // Adds/removes AX observers to match the currently running apps.
@@ -677,27 +662,4 @@ final class OpenWindowsStore: ObservableObject {
     AXUIElementSetAttributeValue(element, attribute, value ? kCFBooleanTrue : kCFBooleanFalse)
   }
 
-  // Captures refresh timing metadata and republishes diagnostics.
-  private func recordRefresh(reason: WindowRefreshReason, startedAt: Date) {
-    refreshCount += 1
-    lastRefreshAt = Date()
-    lastRefreshReason = reason
-    lastRefreshDurationMs = Date().timeIntervalSince(startedAt) * 1000
-    publishDiagnostics()
-  }
-
-  // Publishes the latest runtime diagnostics snapshot.
-  private func publishDiagnostics() {
-    diagnostics = OpenWindowsStoreDiagnostics(
-      isTrusted: permissionManager.isTrusted,
-      observerRegistrationCount: observerRegistrationsByPID.count,
-      activePollingInterval: activePollingInterval,
-      refreshCount: refreshCount,
-      observerEventCount: observerEventCount,
-      lastRefreshAt: lastRefreshAt,
-      lastRefreshReason: lastRefreshReason,
-      lastRefreshDurationMs: lastRefreshDurationMs,
-      windowCount: windows.count
-    )
-  }
 }

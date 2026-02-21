@@ -6,7 +6,6 @@ import Foundation
 final class PinnedWindowsStore: ObservableObject {
   @Published private(set) var pinnedItems: [PinnedWindowItem] = []
   @Published private(set) var maxVisiblePinnedTabs = 10
-  @Published private(set) var diagnostics = PinnedWindowsStoreDiagnostics.empty
 
   private var references: [PinnedWindowReference]
   private var lastSeenWindows: [WindowSnapshot] = []
@@ -28,14 +27,11 @@ final class PinnedWindowsStore: ObservableObject {
 
   // Rebuilds pinned items by matching persisted references to live windows.
   func reconcile(with windows: [WindowSnapshot]) {
-    let reconcileStart = Date()
     lastSeenWindows = windows
     var updatedReferences = references
     var didMutateReferences = false
     var consumedWindowIDs: Set<String> = []
     var newPinnedItems: [PinnedWindowItem] = []
-    var methodCounts: [PinMatchMethod: Int] = [:]
-    var matchedPins = 0
 
     for index in updatedReferences.indices {
       var reference = updatedReferences[index]
@@ -47,8 +43,6 @@ final class PinnedWindowsStore: ObservableObject {
 
       if let match {
         consumedWindowIDs.insert(match.window.id)
-        matchedPins += 1
-        methodCounts[match.method, default: 0] += 1
         let storedTitle = canonicalStoredTitle(for: match.window)
         let storedAppName = canonicalStoredAppName(for: match.window)
         let normalizedTitle = PinnedWindowMatcher.normalizedTitle(match.window.title)
@@ -92,14 +86,6 @@ final class PinnedWindowsStore: ObservableObject {
     if pinnedItems != newPinnedItems {
       pinnedItems = newPinnedItems
     }
-    diagnostics = PinnedWindowsStoreDiagnostics(
-      totalPins: updatedReferences.count,
-      matchedPins: matchedPins,
-      missingPins: max(0, updatedReferences.count - matchedPins),
-      lastReconcileAt: Date(),
-      lastReconcileDurationMs: Date().timeIntervalSince(reconcileStart) * 1000,
-      matchCountsByMethod: methodCounts
-    )
   }
 
   // Toggles a window pin on/off using the strongest available identity match.
