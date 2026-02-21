@@ -111,7 +111,6 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
 
   // Measures the hosting view and applies a safe minimum width.
   private func updateLength() {
-    hostingView.layoutSubtreeIfNeeded()
     let fittingWidth = hostingView.fittingSize.width
     let desiredLength = max(effectiveMinimumLength, fittingWidth + effectiveLengthPadding)
     lastAppliedLength = desiredLength
@@ -120,7 +119,6 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
 
   // Avoids tiny width thrash that can make the strip visibly flicker.
   private func updateLengthIfNeeded() {
-    hostingView.layoutSubtreeIfNeeded()
     let fittingWidth = hostingView.fittingSize.width
     let desiredLength = max(effectiveMinimumLength, fittingWidth + effectiveLengthPadding)
     if let lastAppliedLength, abs(lastAppliedLength - desiredLength) < lengthChangeThreshold {

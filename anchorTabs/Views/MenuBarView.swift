@@ -152,12 +152,6 @@ struct MenuBarView: View {
       }
 
       Button {
-        model.openWindowPopoverSettings()
-      } label: {
-        Label("Settings", systemImage: "gearshape")
-      }
-
-      Button {
         NSApplication.shared.terminate(nil)
       } label: {
         Label("Quit", systemImage: "power")
