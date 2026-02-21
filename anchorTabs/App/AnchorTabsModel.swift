@@ -51,7 +51,6 @@ final class AnchorTabsModel: ObservableObject {
   private let windowStore: OpenWindowsStore
   private let pinnedStore: PinnedWindowsStore
   private let userDefaults: UserDefaults
-  private let iconCache = NSCache<NSString, NSImage>()
   private var cancellables: Set<AnyCancellable> = []
   @Published private(set) var isWindowPopoverVisible = false
 
@@ -198,11 +197,6 @@ final class AnchorTabsModel: ObservableObject {
     pinnedStore.renamePin(pinID: pinID, customName: customName)
   }
 
-  // Reorders pins from list-based drag move.
-  func movePinnedItem(from source: IndexSet, to destination: Int) {
-    pinnedStore.movePinnedItem(from: source, to: destination)
-  }
-
   // Reorders a specific pin before a target index.
   func movePinnedItem(id: UUID, beforeIndex: Int?) {
     pinnedStore.movePinnedItem(id: id, beforeIndex: beforeIndex)
@@ -241,11 +235,6 @@ final class AnchorTabsModel: ObservableObject {
     } else if response == .alertSecondButtonReturn {
       renamePin(pinID: pinnedItem.id, customName: nil)
     }
-  }
-
-  // Removes only pins that are currently unmatched.
-  func removeAllMissingPins() {
-    pinnedStore.removeAllMissingPins()
   }
 
   // Returns true when a live window is already pinned.
@@ -299,27 +288,6 @@ final class AnchorTabsModel: ObservableObject {
     guard highlightFocusedWindow else { return false }
     guard let runtimeID = item.window?.id else { return false }
     return runtimeID == focusedWindowRuntimeID
-  }
-
-  // Resolves and caches app icons for menu rows.
-  func appIcon(for bundleID: String) -> NSImage? {
-    if let cached = iconCache.object(forKey: bundleID as NSString) {
-      return cached
-    }
-
-    guard
-      let app = NSWorkspace.shared.runningApplications.first(where: {
-        $0.bundleIdentifier == bundleID
-      }),
-      let bundleURL = app.bundleURL
-    else {
-      return nil
-    }
-
-    let icon = NSWorkspace.shared.icon(forFile: bundleURL.path)
-    icon.size = NSSize(width: 14, height: 14)
-    iconCache.setObject(icon, forKey: bundleID as NSString)
-    return icon
   }
 
   // Wires store publishers into top-level observable properties.

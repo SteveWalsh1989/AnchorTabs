@@ -1,6 +1,5 @@
 import Combine
 import Foundation
-import SwiftUI
 
 // Persists pinned windows and reconciles them against current AX snapshots.
 @MainActor
@@ -140,16 +139,6 @@ final class PinnedWindowsStore: ObservableObject {
     reconcile(with: lastSeenWindows)
   }
 
-  // Drops all pins that no longer resolve to live windows.
-  func removeAllMissingPins() {
-    references =
-      pinnedItems
-      .filter { !$0.isMissing }
-      .map(\.reference)
-    save()
-    reconcile(with: lastSeenWindows)
-  }
-
   // Saves or clears a custom display name for a pin.
   func renamePin(pinID: UUID, customName: String?) {
     guard let index = references.firstIndex(where: { $0.id == pinID }) else { return }
@@ -178,13 +167,6 @@ final class PinnedWindowsStore: ObservableObject {
   func pinnedItem(for window: WindowSnapshot) -> PinnedWindowItem? {
     guard let pinID = existingPinID(for: window) else { return nil }
     return pinnedItems.first(where: { $0.id == pinID })
-  }
-
-  // Reorders pins from list drag-move and persists the updated order.
-  func movePinnedItem(from source: IndexSet, to destination: Int) {
-    references.move(fromOffsets: source, toOffset: destination)
-    save()
-    reconcile(with: lastSeenWindows)
   }
 
   // Reorders a pin by id for custom drag/drop placement.
