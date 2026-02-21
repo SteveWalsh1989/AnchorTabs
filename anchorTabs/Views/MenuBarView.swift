@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 // Main menu bar strip UI with pinned tabs and one consolidated management menu.
@@ -140,6 +141,28 @@ struct MenuBarView: View {
     .frame(width: launcherSectionWidth, height: 20, alignment: .center)
     .contentShape(Rectangle())
     .help("Open window manager")
+    .contextMenu {
+      Button {
+        model.toggleMenuBarPinnedItemsHidden()
+      } label: {
+        Label(
+          model.hidesPinnedItemsInMenuBar ? "Show Pinned Items" : "Hide Pinned Items",
+          systemImage: model.hidesPinnedItemsInMenuBar ? "eye" : "eye.slash"
+        )
+      }
+
+      Button {
+        model.openWindowPopoverSettings()
+      } label: {
+        Label("Settings", systemImage: "gearshape")
+      }
+
+      Button {
+        NSApplication.shared.terminate(nil)
+      } label: {
+        Label("Quit", systemImage: "power")
+      }
+    }
     .padding(.trailing, launcherSectionTrailingPadding)
   }
 

@@ -20,6 +20,7 @@ final class AnchorTabsModel: ObservableObject {
   @Published private(set) var maxVisiblePinnedTabs = 10
   @Published private(set) var focusedWindowRuntimeID: String?
   @Published private(set) var hidesPinnedItemsInMenuBar = false
+  @Published private(set) var windowPopoverSettingsRequestID = 0
 
   // Controls whether missing pinned items are highlighted in red.
   @Published var highlightMissingPins = true {
@@ -160,6 +161,12 @@ final class AnchorTabsModel: ObservableObject {
   // Toggles the window manager popover visibility.
   func toggleWindowPopoverVisibility() {
     setWindowPopoverVisibility(!isWindowPopoverVisible)
+  }
+
+  // Opens the popover directly in settings mode.
+  func openWindowPopoverSettings() {
+    windowPopoverSettingsRequestID += 1
+    setWindowPopoverVisibility(true)
   }
 
   // Hides or shows pinned tabs in the menu bar strip while keeping the gear button visible.

@@ -6,6 +6,7 @@ import SwiftUI
 struct WindowPopoverView: View {
   @ObservedObject var model: AnchorTabsModel
   @State private var isShowingLayoutSettings = false
+  @State private var handledSettingsRequestID = 0
   private let accessibilityStateRefreshTimer = Timer.publish(every: 1.0, on: .main, in: .common)
     .autoconnect()
   private let popoverWidth: CGFloat = 300
@@ -66,6 +67,12 @@ struct WindowPopoverView: View {
       guard !model.isAccessibilityTrusted else { return }
       model.refreshWindowsNow()
     }
+    .onAppear {
+      applyPendingSettingsRequest()
+    }
+    .onReceive(model.$windowPopoverSettingsRequestID.removeDuplicates()) { _ in
+      applyPendingSettingsRequest()
+    }
   }
 
   private var explicitPopoverHeight: CGFloat? {
@@ -107,6 +114,13 @@ struct WindowPopoverView: View {
         ? "Show pinned items in menu bar"
         : "Hide pinned items in menu bar"
     )
+  }
+
+  // Opens settings mode when requested from external UI triggers.
+  private func applyPendingSettingsRequest() {
+    guard model.windowPopoverSettingsRequestID != handledSettingsRequestID else { return }
+    handledSettingsRequestID = model.windowPopoverSettingsRequestID
+    isShowingLayoutSettings = true
   }
 
   // Returns windows with currently pinned items first, preserving pin order.
