@@ -127,28 +127,45 @@ final class OpenWindowsStore: ObservableObject {
     updatePollingTimerIfNeeded()
   }
 
-  // Activates and focuses a specific runtime window id.
+  // Activates and focuses a specific runtime window id, switching Spaces if needed.
   func focusWindow(runtimeID: String) -> Bool {
     guard permissionManager.isTrusted else { return false }
     guard let snapshot = windows.first(where: { $0.id == runtimeID }) else { return false }
     guard let windowElement = handlesByRuntimeID[runtimeID] else { return false }
 
+    // Bring the owning app to the front. Using .activateIgnoringOtherApps improves Space switching.
     if let runningApp = NSRunningApplication(processIdentifier: snapshot.pid) {
-      _ = runningApp.activate(options: [.activateAllWindows])
+      _ = runningApp.activate(options: [.activateIgnoringOtherApps, .activateAllWindows])
     }
 
+    // Ensure the window is not minimized.
     _ = setBooleanAttribute(
       for: windowElement,
       attribute: kAXMinimizedAttribute as CFString,
       value: false
     )
 
-    let appElement = AXUIElementCreateApplication(snapshot.pid)
-    _ = AXUIElementSetAttributeValue(
-      appElement, kAXFocusedWindowAttribute as CFString, windowElement)
-    _ = AXUIElementSetAttributeValue(windowElement, kAXMainAttribute as CFString, kCFBooleanTrue)
-    _ = AXUIElementPerformAction(windowElement, kAXRaiseAction as CFString)
-    _ = AXUIElementSetAttributeValue(windowElement, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+    // Capture values for use in the async fallback.
+    let pid = snapshot.pid
+    let element = windowElement
+
+    // Immediate focus/raise attempt. This often triggers the Space switch already.
+    let appElement = AXUIElementCreateApplication(pid)
+    _ = AXUIElementSetAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, element)
+    _ = AXUIElementPerformAction(element, kAXRaiseAction as CFString)
+    _ = AXUIElementSetAttributeValue(element, kAXMainAttribute as CFString, kCFBooleanTrue)
+    _ = AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+
+    // Fallback: repeat on the next run loop tick to allow the status item click to finish.
+    // This improves reliability of Space switching from a menu bar app.
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+      let appElement = AXUIElementCreateApplication(pid)
+      _ = AXUIElementSetAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, element)
+      _ = AXUIElementPerformAction(element, kAXRaiseAction as CFString)
+      _ = AXUIElementSetAttributeValue(element, kAXMainAttribute as CFString, kCFBooleanTrue)
+      _ = AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+    }
+
     return true
   }
 
