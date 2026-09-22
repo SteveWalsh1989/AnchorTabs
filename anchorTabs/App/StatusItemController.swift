@@ -92,6 +92,12 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
       .debounce(for: .milliseconds(lengthUpdateDebounceMs), scheduler: DispatchQueue.main)
       .sink { [weak self] _ in self?.updateLengthIfNeeded() }
       .store(in: &cancellables)
+
+    model.$focusedWindowRuntimeID
+      .removeDuplicates()
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] _ in self?.nativePins?.update() }
+      .store(in: &cancellables)
   }
 
   // Measures the hosting view and applies a safe minimum width.

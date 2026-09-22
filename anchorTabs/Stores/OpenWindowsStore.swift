@@ -155,6 +155,10 @@ final class OpenWindowsStore: ObservableObject {
     _ = AXUIElementPerformAction(element, kAXRaiseAction as CFString)
     _ = AXUIElementSetAttributeValue(element, kAXMainAttribute as CFString, kCFBooleanTrue)
     _ = AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+    // Show the selected pin immediately; the next AX refresh confirms the actual focus.
+    if focusedRuntimeID != runtimeID {
+      focusedRuntimeID = runtimeID
+    }
 
     // Fallback: repeat on the next run loop tick to allow the status item click to finish.
     // This improves reliability of Space switching from a menu bar app.
@@ -562,7 +566,8 @@ final class OpenWindowsStore: ObservableObject {
       if windows.contains(where: { $0.id == focusedRuntimeID }) {
         return focusedRuntimeID
       }
-      if let numberMatch = candidateWindows.first(where: { $0.windowNumber == focusedWindowNumber }) {
+      if let numberMatch = candidateWindows.first(where: { $0.windowNumber == focusedWindowNumber })
+      {
         return numberMatch.id
       }
     }
