@@ -1,25 +1,24 @@
 import AppKit
 import Combine
+import OSLog
 import SwiftUI
 
-// Hosts the SwiftUI strip inside an NSStatusItem and keeps width in sync.
+// Keeps the native launcher independent from the resizable pinned-tab strip.
 @MainActor
 final class StatusItemController: NSObject, NSPopoverDelegate {
-  private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+  private let statusItem = NSStatusBar.system.statusItem(withLength: 36)
+  private let stripStatusItem = NSStatusBar.system.statusItem(
+    withLength: NSStatusItem.variableLength)
   private let hostingView: NSHostingView<MenuBarView>
   private let model: AnchorTabsModel
+  private var nativePins: PinnedStatusItems?
   private let windowPopover = NSPopover()
   private let minimumLength: CGFloat = 70
-  private let compactMinimumLength: CGFloat = 18
   private let lengthPadding: CGFloat = 10
-  private let compactLengthPadding: CGFloat = 0
-  private let launcherSectionWidth: CGFloat = 30
-  private let launcherSectionTrailingPadding: CGFloat = 6
   private let lengthChangeThreshold: CGFloat = 1
   private let lengthUpdateDebounceMs = 100
   private var lastAppliedLength: CGFloat?
-  private var isCompactMode = false
-  private var isWindowPopoverVisible = false
+  private let logger = Logger(subsystem: "com.stevewalsh.AnchorTabs", category: "MenuBarLayout")
   private var cancellables: Set<AnyCancellable> = []
 
   // Creates the hosting view and binds status item sizing updates.
@@ -28,9 +27,27 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     hostingView = NSHostingView(rootView: MenuBarView(model: model))
     super.init()
     configureWindowPopover()
+    configureLauncher()
+    if #available(macOS 27.0, *) {
+      nativePins = PinnedStatusItems(model: model)
+    }
     installHostView()
     observeModel(model)
     updateLength()
+  }
+
+  private func configureLauncher() {
+    statusItem.autosaveName = "AnchorTabs.Launcher"
+    statusItem.isVisible = true
+    statusItem.button?.image = NSImage(
+      systemSymbolName: "pin", accessibilityDescription: "AnchorTabs")
+    statusItem.button?.toolTip = "Open AnchorTabs window manager"
+    statusItem.button?.target = self
+    statusItem.button?.action = #selector(toggleWindowPopover)
+  }
+
+  @objc private func toggleWindowPopover() {
+    model.toggleWindowPopoverVisibility()
   }
 
   private func configureWindowPopover() {
@@ -40,21 +57,17 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     windowPopover.contentSize = NSSize(width: 300, height: 430)
   }
 
-  // Installs the SwiftUI host as the status bar button content view.
+  // Installs the SwiftUI host through NSStatusItem's supported custom-view API.
   private func installHostView() {
-    guard let button = statusItem.button else { return }
-
-    button.title = ""
-    button.image = nil
-    button.addSubview(hostingView)
-    hostingView.translatesAutoresizingMaskIntoConstraints = false
-
-    NSLayoutConstraint.activate([
-      hostingView.leadingAnchor.constraint(equalTo: button.leadingAnchor),
-      hostingView.trailingAnchor.constraint(equalTo: button.trailingAnchor),
-      hostingView.topAnchor.constraint(equalTo: button.topAnchor),
-      hostingView.bottomAnchor.constraint(equalTo: button.bottomAnchor),
-    ])
+    hostingView.frame = NSRect(
+      x: 0,
+      y: 0,
+      width: minimumLength,
+      height: NSStatusBar.system.thickness
+    )
+    hostingView.sizingOptions = [.intrinsicContentSize]
+    stripStatusItem.autosaveName = "AnchorTabs.Pins"
+    stripStatusItem.view = hostingView
   }
 
   // Listens for model changes so width can adapt to changing tab labels.
@@ -64,7 +77,6 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
       .receive(on: DispatchQueue.main)
       .sink { [weak self] isVisible in
         guard let self else { return }
-        self.isWindowPopoverVisible = isVisible
         if isVisible {
           self.showWindowPopover()
         } else {
@@ -76,69 +88,49 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
       }
       .store(in: &cancellables)
 
-    model.$hidesPinnedItemsInMenuBar
-      .removeDuplicates()
-      .receive(on: DispatchQueue.main)
-      .sink { [weak self] isHidden in
-        guard let self else { return }
-        self.isCompactMode = isHidden
-        self.updateLengthIfNeeded()
-      }
-      .store(in: &cancellables)
-
-    let visibleTabLabels = Publishers.CombineLatest(model.$pinnedItems, model.$maxVisiblePinnedTabs)
-      .map { pinnedItems, maxVisiblePinnedTabs in
-        Array(pinnedItems.prefix(maxVisiblePinnedTabs)).map(\.tabLabel)
-      }
-      .removeDuplicates()
-
-    Publishers.CombineLatest4(
-      visibleTabLabels,
-      model.$menuPinnedItemMinWidth.removeDuplicates(),
-      model.$menuTrailingSpacing.removeDuplicates(),
-      model.$isAccessibilityTrusted.removeDuplicates()
-    )
-      .combineLatest(model.$hidesPinnedItemsInMenuBar.removeDuplicates())
-      .debounce(
-        for: .milliseconds(lengthUpdateDebounceMs),
-        scheduler: DispatchQueue.main
-      )
-      .sink { [weak self] _ in
-        self?.updateLengthIfNeeded()
-      }
+    model.objectWillChange
+      .debounce(for: .milliseconds(lengthUpdateDebounceMs), scheduler: DispatchQueue.main)
+      .sink { [weak self] _ in self?.updateLengthIfNeeded() }
       .store(in: &cancellables)
   }
 
   // Measures the hosting view and applies a safe minimum width.
   private func updateLength() {
-    let fittingWidth = hostingView.fittingSize.width
-    let desiredLength = max(effectiveMinimumLength, fittingWidth + effectiveLengthPadding)
-    lastAppliedLength = desiredLength
-    statusItem.length = desiredLength
+    updateLengthIfNeeded()
   }
 
   // Avoids tiny width thrash that can make the strip visibly flicker.
   private func updateLengthIfNeeded() {
+    statusItem.button?.image = NSImage(
+      systemSymbolName: model.isAccessibilityTrusted ? "pin" : "exclamationmark.triangle.fill",
+      accessibilityDescription: "AnchorTabs")
+    if let nativePins {
+      stripStatusItem.isVisible = false
+      nativePins.update()
+      return
+    }
+    let showsPins =
+      !model.hidesPinnedItemsInMenuBar && model.isAccessibilityTrusted && !model.pinnedItems.isEmpty
+    stripStatusItem.isVisible = showsPins
+    guard showsPins else { return }
+    hostingView.invalidateIntrinsicContentSize()
     let fittingWidth = hostingView.fittingSize.width
-    let desiredLength = max(effectiveMinimumLength, fittingWidth + effectiveLengthPadding)
+    let desiredLength = max(minimumLength, fittingWidth + lengthPadding)
     if let lastAppliedLength, abs(lastAppliedLength - desiredLength) < lengthChangeThreshold {
       return
     }
     lastAppliedLength = desiredLength
-    statusItem.length = desiredLength
-  }
-
-  private var effectiveMinimumLength: CGFloat {
-    isCompactMode ? compactMinimumLength : minimumLength
-  }
-
-  private var effectiveLengthPadding: CGFloat {
-    isCompactMode ? compactLengthPadding : lengthPadding
+    // Custom status-item views must resize with their allocated menu-bar space.
+    hostingView.setFrameSize(NSSize(width: desiredLength, height: NSStatusBar.system.thickness))
+    stripStatusItem.length = desiredLength
+    logger.info(
+      "Menu layout: measured=\(fittingWidth) allocated=\(desiredLength) pins=\(self.model.pinnedItems.count)"
+    )
   }
 
   private func showWindowPopover() {
     guard !windowPopover.isShown else { return }
-    guard let button = statusItem.button else {
+    guard let statusItemView = statusItem.button else {
       model.setWindowPopoverVisibility(false)
       return
     }
@@ -147,17 +139,13 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
       rootView: WindowPopoverView(model: model)
     )
 
-    let anchorCenterX = max(
-      button.bounds.minX + 1,
-      button.bounds.maxX - launcherSectionTrailingPadding - (launcherSectionWidth / 2)
-    )
     let anchorRect = NSRect(
-      x: anchorCenterX,
-      y: button.bounds.minY,
+      x: statusItemView.bounds.midX,
+      y: statusItemView.bounds.minY,
       width: 1,
-      height: button.bounds.height
+      height: statusItemView.bounds.height
     )
-    windowPopover.show(relativeTo: anchorRect, of: button, preferredEdge: .minY)
+    windowPopover.show(relativeTo: anchorRect, of: statusItemView, preferredEdge: .minY)
   }
 
   private func hideWindowPopover() {

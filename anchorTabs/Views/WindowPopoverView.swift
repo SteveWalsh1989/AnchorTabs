@@ -10,7 +10,6 @@ struct WindowPopoverView: View {
     .autoconnect()
   private let popoverWidth: CGFloat = 300
   private let noAccessibilityPopoverHeight: CGFloat = 170
-  private let openWindowsRowsBeforeScroll = 8
   private let openWindowsListMaxHeight: CGFloat = 430
 
   var body: some View {
@@ -61,8 +60,9 @@ struct WindowPopoverView: View {
       guard !model.isAccessibilityTrusted else { return }
       model.refreshWindowsNow()
     }
-    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) {
-      _ in
+    .onReceive(
+      NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+    ) { _ in
       guard !model.isAccessibilityTrusted else { return }
       model.refreshWindowsNow()
     }
@@ -109,38 +109,6 @@ struct WindowPopoverView: View {
     )
   }
 
-  // Returns windows with currently pinned items first, preserving pin order.
-  private var orderedWindows: [WindowSnapshot] {
-    var pinnedRank: [String: Int] = [:]
-    for (index, runtimeID) in model.pinnedItems.compactMap({ $0.window?.id }).enumerated() {
-      if pinnedRank[runtimeID] == nil {
-        pinnedRank[runtimeID] = index
-      }
-    }
-
-    return model.windows.enumerated()
-      .sorted { lhs, rhs in
-        let leftRank = pinnedRank[lhs.element.id]
-        let rightRank = pinnedRank[rhs.element.id]
-
-        switch (leftRank, rightRank) {
-        case (let left?, let right?):
-          if left != right {
-            return left < right
-          }
-        case (.some, .none):
-          return true
-        case (.none, .some):
-          return false
-        case (.none, .none):
-          break
-        }
-
-        return lhs.offset < rhs.offset
-      }
-      .map(\.element)
-  }
-
   // Guidance shown when Accessibility permission is currently unavailable.
   private var accessibilityPermissionSection: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -169,66 +137,38 @@ struct WindowPopoverView: View {
     )
   }
 
-  // Chooses row title, preferring a custom pinned label when one exists.
-  private func displayLabel(for window: WindowSnapshot) -> String {
-    guard let pinnedItem = model.pinnedItem(for: window) else { return window.menuTitle }
-    let customName =
-      pinnedItem.reference.customName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    return customName.isEmpty ? window.menuTitle : customName
-  }
-
-  // Returns expanded details for renamed pins to show in an info tooltip.
-  private func renamedWindowTooltip(for window: WindowSnapshot) -> String? {
-    guard let pinnedItem = model.pinnedItem(for: window) else { return nil }
-    let customName =
-      pinnedItem.reference.customName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    guard !customName.isEmpty else { return nil }
-    return "Renamed from: \(window.menuTitle)"
-  }
-
   private var openWindowsSection: some View {
     VStack(alignment: .leading, spacing: 10) {
-      if orderedWindows.isEmpty {
+      if model.pinnedItems.isEmpty && availableWindows.isEmpty {
         Text("No eligible windows found")
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
           .frame(maxWidth: .infinity, alignment: .leading)
-      } else if orderedWindows.count <= openWindowsRowsBeforeScroll {
-        LazyVStack(spacing: 4) {
-          ForEach(orderedWindows) { window in
-            let isPinned = model.isPinned(window: window)
-            let rowLabel = displayLabel(for: window)
-            WindowPopoverWindowRowView(
-              displayLabel: rowLabel,
-              nameTooltip: rowLabel,
-              renameInfoTooltip: renamedWindowTooltip(for: window),
-              isPinned: isPinned,
-              onFocus: { model.activateWindow(window) },
-              onTogglePin: { model.togglePin(for: window) },
-              onRename: {
-                guard let pinnedItem = model.pinnedItem(for: window) else { return }
-                model.promptRename(for: pinnedItem)
-              }
-            )
-          }
-        }
       } else {
         ScrollView {
-          LazyVStack(spacing: 4) {
-            ForEach(orderedWindows) { window in
-              let isPinned = model.isPinned(window: window)
-              let rowLabel = displayLabel(for: window)
+          LazyVStack(alignment: .leading, spacing: 4) {
+            if !model.pinnedItems.isEmpty {
+              sectionHeader("Pinned")
+              ForEach(model.pinnedItems) { pinnedItem in
+                WindowPopoverPinnedRowView(
+                  pinnedItem: pinnedItem,
+                  mappingDescription: model.pinnedWindowMappingDescription(for: pinnedItem),
+                  onFocus: { model.activatePinnedItem(pinnedItem) },
+                  onRename: { model.promptRename(for: pinnedItem) },
+                  onRemove: { model.unpin(pinID: pinnedItem.id) }
+                )
+              }
+            }
+
+            if !availableWindows.isEmpty {
+              sectionHeader("Open Windows")
+            }
+            ForEach(availableWindows) { window in
               WindowPopoverWindowRowView(
-                displayLabel: rowLabel,
-                nameTooltip: rowLabel,
-                renameInfoTooltip: renamedWindowTooltip(for: window),
-                isPinned: isPinned,
+                displayLabel: window.menuTitle,
+                nameTooltip: window.menuTitle,
                 onFocus: { model.activateWindow(window) },
-                onTogglePin: { model.togglePin(for: window) },
-                onRename: {
-                  guard let pinnedItem = model.pinnedItem(for: window) else { return }
-                  model.promptRename(for: pinnedItem)
-                }
+                onTogglePin: { model.togglePin(for: window) }
               )
             }
           }
@@ -238,17 +178,94 @@ struct WindowPopoverView: View {
     }
   }
 
+  private var availableWindows: [WindowSnapshot] {
+    model.windows.filter { !model.isPinned(window: $0) }
+  }
+
+  private func sectionHeader(_ title: String) -> some View {
+    Text(title)
+      .font(.system(size: 11, weight: .semibold))
+      .foregroundStyle(.secondary)
+      .padding(.horizontal, 8)
+      .padding(.top, 4)
+  }
 }
 
-// Row used by the window popover list with pin, name, and rename affordances.
+// Pinned rows remain present when their window is unavailable so they can always be managed.
+private struct WindowPopoverPinnedRowView: View {
+  let pinnedItem: PinnedWindowItem
+  let mappingDescription: String
+  let onFocus: () -> Void
+  let onRename: () -> Void
+  let onRemove: () -> Void
+
+  @State private var isHovering = false
+
+  var body: some View {
+    HStack(spacing: 10) {
+      Button {
+        onRemove()
+      } label: {
+        Image(systemName: "pin.slash")
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(Color.accentColor)
+      .frame(width: 26, alignment: .center)
+      .help("Remove pinned item")
+
+      Button {
+        onFocus()
+      } label: {
+        HStack(spacing: 5) {
+          Text(truncated(pinnedItem.tabLabel, maxCharacters: 64))
+            .lineLimit(1)
+            .truncationMode(.tail)
+          if pinnedItem.isMissing {
+            Image(systemName: "exclamationmark.triangle.fill")
+              .font(.system(size: 9))
+              .foregroundStyle(.orange)
+          }
+        }
+        .font(.system(size: 12))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .help(mappingDescription)
+      }
+      .buttonStyle(.plain)
+      .disabled(pinnedItem.isMissing)
+
+      Button {
+        onRename()
+      } label: {
+        Image(systemName: "pencil")
+      }
+      .buttonStyle(.plain)
+      .frame(width: 26, alignment: .trailing)
+      .opacity(isHovering ? 1 : 0.55)
+      .help("Rename")
+    }
+    .padding(.horizontal, 8)
+    .padding(.vertical, 4)
+    .background(
+      RoundedRectangle(cornerRadius: 7)
+        .fill(isHovering ? Color.secondary.opacity(0.14) : Color.clear)
+    )
+    .contentShape(Rectangle())
+    .onHover { isHovering = $0 }
+  }
+
+  private func truncated(_ text: String, maxCharacters: Int) -> String {
+    guard maxCharacters > 1, text.count > maxCharacters else { return text }
+    let endIndex = text.index(text.startIndex, offsetBy: maxCharacters - 1)
+    return "\(text[..<endIndex])…"
+  }
+}
+
+// Row used by the window popover list with pin and name affordances.
 private struct WindowPopoverWindowRowView: View {
   let displayLabel: String
   let nameTooltip: String
-  let renameInfoTooltip: String?
-  let isPinned: Bool
   let onFocus: () -> Void
   let onTogglePin: () -> Void
-  let onRename: () -> Void
 
   @State private var isHovering = false
 
@@ -257,12 +274,12 @@ private struct WindowPopoverWindowRowView: View {
       Button {
         onTogglePin()
       } label: {
-        Image(systemName: isPinned ? "pin.fill" : "pin")
+        Image(systemName: "pin")
       }
       .buttonStyle(.plain)
-      .foregroundStyle(isPinned ? Color.accentColor : Color.secondary)
+      .foregroundStyle(Color.secondary)
       .frame(width: 26, alignment: .center)
-      .help(isPinned ? "Unpin window" : "Pin window")
+      .help("Pin window")
 
       Button {
         onFocus()
@@ -276,32 +293,8 @@ private struct WindowPopoverWindowRowView: View {
       }
       .buttonStyle(.plain)
 
-      if let renameInfoTooltip, isHovering {
-        Image(systemName: "info.circle")
-          .font(.system(size: 11))
-          .foregroundStyle(.secondary)
-          .frame(width: 14, alignment: .center)
-          .help(renameInfoTooltip)
-      } else {
-        Color.clear
-          .frame(width: 14, height: 14)
-      }
-
-      if isPinned {
-        Button {
-          onRename()
-        } label: {
-          Image(systemName: "pencil")
-        }
-        .buttonStyle(.plain)
-        .frame(width: 26, alignment: .trailing)
-        .opacity(isHovering ? 1 : 0)
-        .allowsHitTesting(isHovering)
-        .help("Rename")
-      } else {
-        Color.clear
-          .frame(width: 26, height: 14)
-      }
+      Color.clear
+        .frame(width: 26, height: 14)
     }
     .padding(.horizontal, 8)
     .padding(.vertical, 4)

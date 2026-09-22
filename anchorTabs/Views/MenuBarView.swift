@@ -4,8 +4,6 @@ import SwiftUI
 // Main menu bar strip UI with pinned tabs and one consolidated management menu.
 struct MenuBarView: View {
   @ObservedObject var model: AnchorTabsModel
-  private let launcherSectionWidth: CGFloat = 30
-  private let launcherSectionTrailingPadding: CGFloat = 6
 
   private var shouldShowPinnedItems: Bool {
     model.isAccessibilityTrusted && !model.hidesPinnedItemsInMenuBar
@@ -29,19 +27,13 @@ struct MenuBarView: View {
 
   // Renders pinned tabs plus one consolidated settings/menu button.
   var body: some View {
-    HStack(spacing: 0) {
-      pinnedItemsSection
-      launcherSection
-    }
-    .onDisappear {
-      model.setWindowPopoverVisibility(false)
-    }
-    .frame(maxWidth: .infinity, alignment: .trailing)
-    .padding(.vertical, 2)
-    .frame(minHeight: 24)
-    .transaction { transaction in
-      transaction.animation = nil
-    }
+    pinnedItemsSection
+      .fixedSize(horizontal: true, vertical: false)
+      .padding(.vertical, 2)
+      .frame(minHeight: 24)
+      .transaction { transaction in
+        transaction.animation = nil
+      }
   }
 
   private var pinnedItemsSection: some View {
@@ -107,16 +99,10 @@ struct MenuBarView: View {
             .help("Overflow pinned windows")
           }
         } else {
-          Button {
+          AccessibilityWarningButton {
             model.openAccessibilitySettings()
-          } label: {
-            Image(systemName: "exclamationmark.triangle.fill")
-              .foregroundStyle(.orange)
           }
-          .buttonStyle(.plain)
-          .help(
-            "Accessibility access is required to enumerate and focus windows. Click to open Accessibility Settings."
-          )
+          .frame(width: 20, height: 20)
         }
 
         if effectiveTrailingSpacing > 0 {
@@ -126,41 +112,11 @@ struct MenuBarView: View {
         }
       }
     }
-    .frame(maxWidth: .infinity, alignment: .trailing)
     .padding(.leading, pinnedItemsLeadingPadding)
   }
 
-  private var launcherSection: some View {
-    Button {
-      model.toggleWindowPopoverVisibility()
-    } label: {
-      Image(systemName: "pin")
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-    }
-    .buttonStyle(.plain)
-    .frame(width: launcherSectionWidth, height: 20, alignment: .center)
-    .contentShape(Rectangle())
-    .help("Open window manager")
-    .contextMenu {
-      Button {
-        model.toggleMenuBarPinnedItemsHidden()
-      } label: {
-        Label(
-          model.hidesPinnedItemsInMenuBar ? "Show Pinned Items" : "Hide Pinned Items",
-          systemImage: model.hidesPinnedItemsInMenuBar ? "eye" : "eye.slash"
-        )
-      }
-
-      Button {
-        NSApplication.shared.terminate(nil)
-      } label: {
-        Label("Quit", systemImage: "power")
-      }
-    }
-    .padding(.trailing, launcherSectionTrailingPadding)
-  }
-
   // Tooltip text for pinned tabs, including missing-state guidance.
+  // swiftlint:disable:next function_body_length
   private func pinnedTabButton(for pinnedItem: PinnedWindowItem) -> AnyView {
     let tabKind: MenuBarTabButtonStyle.Kind
     if pinnedItem.isMissing {
@@ -229,10 +185,11 @@ struct MenuBarView: View {
   private func reassignmentMenu(for pinnedItem: PinnedWindowItem) -> some View {
     let candidates = model.reassignmentWindows(for: pinnedItem)
     if candidates.isEmpty {
-      Button {} label: {
+      Button {
+      } label: {
         Label("Reassign Window", systemImage: "arrow.triangle.2.circlepath")
       }
-        .disabled(true)
+      .disabled(true)
     } else {
       Menu {
         ForEach(candidates, id: \.id) { candidate in
@@ -240,7 +197,9 @@ struct MenuBarView: View {
           Button {
             model.reassignPinnedItem(pinnedItem, to: candidate)
           } label: {
-            Label(candidate.menuTitle, systemImage: isCurrentWindow ? "checkmark.circle.fill" : "circle")
+            Label(
+              candidate.menuTitle, systemImage: isCurrentWindow ? "checkmark.circle.fill" : "circle"
+            )
           }
           .disabled(isCurrentWindow)
         }

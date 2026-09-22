@@ -24,12 +24,23 @@ final class AccessibilityPermissionService: ObservableObject {
 
   // Opens macOS Privacy > Accessibility directly for this app.
   func openAccessibilitySettings() {
+    requestPermissionPrompt()
+
     guard
       let url = URL(
         string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
     else {
       return
     }
-    NSWorkspace.shared.open(url)
+
+    let configuration = NSWorkspace.OpenConfiguration()
+    configuration.activates = true
+    NSWorkspace.shared.open(url, configuration: configuration) { application, error in
+      if let error {
+        NSLog("Failed to open Accessibility Settings: %@", error.localizedDescription)
+        return
+      }
+      application?.activate(options: [.activateAllWindows])
+    }
   }
 }
