@@ -260,7 +260,8 @@ final class PinnedWindowsStoreTests: XCTestCase {
     )
 
     let fingerprint = OpenWindowsStore.fallbackRuntimeIDFingerprint(for: snapshot)
-    let firstID = OpenWindowsStore.fallbackRuntimeID(pid: snapshot.pid, fingerprint: fingerprint, occurrence: 0)
+    let firstID = OpenWindowsStore.fallbackRuntimeID(
+      pid: snapshot.pid, fingerprint: fingerprint, occurrence: 0)
     let firstIDAgain = OpenWindowsStore.fallbackRuntimeID(
       pid: snapshot.pid,
       fingerprint: fingerprint,
@@ -379,7 +380,7 @@ final class PinnedWindowsStoreTests: XCTestCase {
       runtimeID: "stale-2",
       role: "AXWindow",
       subrole: nil,
-      frame: WindowFrame(x: 130, y: 130, width: 1200, height: 760)
+      frame: WindowFrame(x: 160, y: 160, width: 1200, height: 760)
     )
 
     let serializedReferences = try JSONEncoder().encode([firstReference, secondReference])
@@ -405,7 +406,7 @@ final class PinnedWindowsStoreTests: XCTestCase {
       windowNumber: nil,
       role: "AXWindow",
       subrole: nil,
-      frame: WindowFrame(x: 130, y: 130, width: 1200, height: 760)
+      frame: WindowFrame(x: 160, y: 160, width: 1200, height: 760)
     )
 
     let store = PinnedWindowsStore(userDefaults: defaults)

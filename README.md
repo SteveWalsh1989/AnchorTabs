@@ -2,6 +2,8 @@
 
 AnchorTabs is a macOS menu bar app for pinning specific windows and restoring the exact window with one click.
 
+[Download AnchorTabs for macOS](https://github.com/SteveWalsh1989/AnchorTabs/releases/latest)
+
 It is designed for heavy multi-window workflows (for example, multiple Cursor workspaces or multiple Chrome windows) to easily pin, rename, and select opened windows to avoid needing to swipe up or use the ALT TAB and go through a list of applications you dont need to cycle through
 
 This app was built using the assistance of AI, specifically Codex. 
@@ -30,12 +32,19 @@ Right-click any pinned tab to:
 - Reassign the pin to another open window from the same app (`Reassign Window`).
 - Keep the existing custom pin name while updating the underlying window identity.
 
-## Requirements
+## Download and install
 
-- macOS
-- Xcode with Swift 6 support
+1. Download **AnchorTabs-mac.zip** from the [latest GitHub release](https://github.com/SteveWalsh1989/AnchorTabs/releases/latest). It supports Apple Silicon and Intel Macs running macOS 26.2 or newer.
+2. Unzip the download, move **AnchorTabs.app** into **Applications**, and open it.
+3. Grant Accessibility access using the [setup steps below](#accessibility-setup). Look for the pin icon in the menu bar.
+
+The GitHub build is ad hoc signed. If macOS blocks the first launch, go to **System Settings → Privacy & Security** after trying to open it, choose **Open Anyway** for AnchorTabs, and confirm.
+
+To update, quit AnchorTabs and replace the app in **Applications** with the version from the latest release.
 
 ## Build and Run
+
+Building from source requires Xcode with Swift 6 support.
 
 ### Xcode
 
